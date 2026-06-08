@@ -125,6 +125,10 @@ export class CharacterSelectScene extends Phaser.Scene {
       });
     }
 
+    // Direct keyboard listeners — immune to JustDown frame-timing issues
+    this.input.keyboard.on('keydown-ENTER', () => this._startGame());
+    this.input.keyboard.on('keydown-T',     () => this._startGame());
+
     // Show P1 cursor immediately
     this.cursors[0].setStrokeStyle(4, PLAYER_COLORS[0], 1);
     this._refreshPortraits();
@@ -134,28 +138,25 @@ export class CharacterSelectScene extends Phaser.Scene {
     const pads = this.input.gamepad ? this.input.gamepad.gamepads : [];
 
     this.cursors.forEach((cursor, pi) => {
-      if (!cursor.joined || cursor.locked) return;
+      if (!cursor.joined) return;
 
-      let moveLeft = false, moveRight = false, select = false, startGame = false;
+      let moveLeft = false, moveRight = false, select = false;
 
       if (pi === 0) {
-        moveLeft  = Phaser.Input.Keyboard.JustDown(this.keys1.left);
-        moveRight = Phaser.Input.Keyboard.JustDown(this.keys1.right);
-        select    = Phaser.Input.Keyboard.JustDown(this.keys1.attack);
-        startGame = Phaser.Input.Keyboard.JustDown(this.keys1.start);
+        moveLeft  = !cursor.locked && Phaser.Input.Keyboard.JustDown(this.keys1.left);
+        moveRight = !cursor.locked && Phaser.Input.Keyboard.JustDown(this.keys1.right);
+        select    = !cursor.locked && Phaser.Input.Keyboard.JustDown(this.keys1.attack);
       } else if (pi === 1) {
-        moveLeft  = Phaser.Input.Keyboard.JustDown(this.keys2.left);
-        moveRight = Phaser.Input.Keyboard.JustDown(this.keys2.right);
-        select    = Phaser.Input.Keyboard.JustDown(this.keys2.attack);
-        startGame = Phaser.Input.Keyboard.JustDown(this.keys2.start);
+        moveLeft  = !cursor.locked && Phaser.Input.Keyboard.JustDown(this.keys2.left);
+        moveRight = !cursor.locked && Phaser.Input.Keyboard.JustDown(this.keys2.right);
+        select    = !cursor.locked && Phaser.Input.Keyboard.JustDown(this.keys2.attack);
       } else {
         const pad = pads[pi - 2];
         if (pad) {
           const ax = pad.axes[0] ? pad.axes[0].getValue() : 0;
-          moveLeft  = ax < -0.5 || pad.buttons[14]?.pressed;
-          moveRight = ax >  0.5 || pad.buttons[15]?.pressed;
-          select    = pad.buttons[2]?.pressed;
-          startGame = pad.buttons[9]?.pressed;
+          moveLeft  = !cursor.locked && (ax < -0.5 || pad.buttons[14]?.pressed);
+          moveRight = !cursor.locked && (ax >  0.5 || pad.buttons[15]?.pressed);
+          select    = !cursor.locked && pad.buttons[2]?.pressed;
         }
       }
 
@@ -170,7 +171,6 @@ export class CharacterSelectScene extends Phaser.Scene {
         }
       }
 
-      if (startGame && pi === 0) this._startGame();
     });
 
     this._refreshPortraits();
