@@ -9,6 +9,7 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   preload() {
     this.load.image('select_bg', 'character-select-bg.png');
+    this.load.audio('cursor_move', 'cursor-move.wav');
     CHAR_ORDER.forEach(key => {
       this.load.image(`portrait_${key}`, `${key}-portrait.png`);
     });
@@ -186,8 +187,8 @@ export class CharacterSelectScene extends Phaser.Scene {
         }
       }
 
-      if (moveLeft)  cursor.cursorPos = (cursor.cursorPos - 1 + CHAR_ORDER.length) % CHAR_ORDER.length;
-      if (moveRight) cursor.cursorPos = (cursor.cursorPos + 1) % CHAR_ORDER.length;
+      if (moveLeft)  { cursor.cursorPos = (cursor.cursorPos - 1 + CHAR_ORDER.length) % CHAR_ORDER.length; this._playMove(); }
+      if (moveRight) { cursor.cursorPos = (cursor.cursorPos + 1) % CHAR_ORDER.length; this._playMove(); }
 
       if (select) {
         const ci = cursor.cursorPos;
@@ -221,6 +222,12 @@ export class CharacterSelectScene extends Phaser.Scene {
       cursor.x = p.x;
       cursor.y = p.y;
     });
+  }
+
+  _playMove() {
+    if (this.cache.audio.exists('cursor_move')) {
+      this.sound.play('cursor_move', { volume: 0.5 });
+    }
   }
 
   _startGame() {
