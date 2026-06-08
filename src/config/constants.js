@@ -79,13 +79,13 @@ export const CHAR_CONFIGS = {
     maxHP:       95,
     speed:       245,
     depthSpeed:  190,
-    meleeDmg:    20,
+    meleeDmg:    11,   // per hit — nunchuck lands 2 hits per swing
     stompDmg:    30,
     maxEnergy:   100,
     energyDrain: 2.0,   // per second while moving
-    attackDrain: 7,     // per attack
+    attackDrain: 5,     // per attack (cheaper because it's fast)
     napDuration: 10.0,  // seconds
-    description: 'Burst energy. Naps when drained.\nStomp downed enemies.',
+    description: 'Stuffed-rabbit nunchucks. Fast double-hit.\nNaps when drained. Stomp downed enemies.',
   },
 };
 
