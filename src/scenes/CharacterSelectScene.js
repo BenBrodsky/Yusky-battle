@@ -68,13 +68,13 @@ export class CharacterSelectScene extends Phaser.Scene {
       }
 
       // Name
-      this.add.text(x, y + 60, cfg.name, {
+      this.add.text(x, y + 108, cfg.name, {
         fontSize: '22px', fontStyle: 'bold',
         fill: '#ffffff', stroke: '#000', strokeThickness: 4,
       }).setOrigin(0.5);
 
       // Description
-      this.add.text(x, y + 90, cfg.description, {
+      this.add.text(x, y + 134, cfg.description, {
         fontSize: '12px', fill: '#aaaaaa', align: 'center',
         wordWrap: { width: charW - 16 },
       }).setOrigin(0.5, 0);
