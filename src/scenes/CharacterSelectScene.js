@@ -45,12 +45,19 @@ export class CharacterSelectScene extends Phaser.Scene {
       const card = this.add.rectangle(x, y, charW, charH, 0x222244)
         .setStrokeStyle(3, 0x4444aa);
 
-      // Portrait image (from cropped title art) or colored block fallback
+      // Portrait image or colored block fallback
       const portraitKey = `portrait_${key}`;
       if (this.textures.exists(portraitKey)) {
-        this.add.image(x, y - 50, portraitKey)
-          .setDisplaySize(charW - 20, charH * 0.55)
-          .setOrigin(0.5);
+        const portraitAreaW = charW - 20;
+        const portraitAreaH = charH * 0.62;
+        const img = this.add.image(x, y - 44, portraitKey).setOrigin(0.5);
+        // Scale to fill the card area while preserving aspect ratio (cover-style)
+        const scale = Math.max(portraitAreaW / img.width, portraitAreaH / img.height);
+        img.setScale(scale);
+        // Mask to card bounds so overflow is hidden
+        const mask = this.add.graphics();
+        mask.fillRect(x - portraitAreaW / 2, y - 44 - portraitAreaH / 2, portraitAreaW, portraitAreaH);
+        img.setMask(mask.createGeometryMask());
       } else {
         // Fallback: colored rectangle with eyes
         this.add.rectangle(x, y - 50, charW - 20, charH * 0.55, cfg.color);
