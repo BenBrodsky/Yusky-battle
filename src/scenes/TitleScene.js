@@ -5,7 +5,8 @@ export class TitleScene extends Phaser.Scene {
 
   preload() {
     this.load.image('title_bg', 'title-bg.png');
-    this.load.audio('title_music', 'title-music.m4a');
+    this.load.audio('title_music',   'title-music.m4a');
+    this.load.audio('title_advance', 'title-advance.wav');
   }
 
   create() {
@@ -48,6 +49,9 @@ export class TitleScene extends Phaser.Scene {
     // Input listeners — stop music before transitioning
     const goNext = () => {
       this.music?.stop();
+      if (this.cache.audio.exists('title_advance')) {
+        this.sound.play('title_advance', { volume: 0.8 });
+      }
       this.scene.start('CharacterSelect');
     };
     this.input.keyboard.once('keydown-ENTER', goNext);
