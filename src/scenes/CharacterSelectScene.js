@@ -10,6 +10,7 @@ export class CharacterSelectScene extends Phaser.Scene {
   preload() {
     this.load.image('select_bg', 'character-select-bg.png');
     this.load.audio('cursor_move', 'cursor-move.wav');
+    this.load.audio('game_start',  'game-start.wav');
     CHAR_ORDER.forEach(key => {
       this.load.image(`portrait_${key}`, `${key}-portrait.png`);
     });
@@ -264,6 +265,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       }
     });
 
-    this.scene.start('Game', { playerConfigs, levelIndex: 0 });
+    if (this.cache.audio.exists('game_start')) {
+      this.sound.play('game_start', { volume: 0.8 });
+      this.time.delayedCall(1200, () => this.scene.start('Game', { playerConfigs, levelIndex: 0 }));
+    } else {
+      this.scene.start('Game', { playerConfigs, levelIndex: 0 });
+    }
   }
 }
