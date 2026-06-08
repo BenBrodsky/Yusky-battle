@@ -42,8 +42,9 @@ export class CharacterSelectScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── Card state: null | 'human' | 'cpu' ───────────────────────────
-    this.cardStates = CHAR_ORDER.map(() => null);
-    this.cursorPos  = 0;
+    this.cardStates    = CHAR_ORDER.map(() => null);
+    this.selectionOrder = []; // ci values in the order they were picked as human
+    this.cursorPos     = 0;
 
     // ── Portrait cards ────────────────────────────────────────────────
     const charW = 220, charH = 320;
@@ -130,11 +131,12 @@ export class CharacterSelectScene extends Phaser.Scene {
     const prev = this.cardStates[ci];
     if (prev === null) {
       this.cardStates[ci] = 'human';
-      // Pick the color this card will display as (nth human slot)
-      const humanIdx = this.cardStates.filter(s => s === 'human').length - 1;
-      this._flashCard(ci, PLAYER_COLORS[Math.min(humanIdx, 3)]);
+      this.selectionOrder.push(ci);
+      const playerNum = this.selectionOrder.length - 1;
+      this._flashCard(ci, PLAYER_COLORS[Math.min(playerNum, 3)]);
     } else if (prev === 'human') {
       this.cardStates[ci] = 'cpu';
+      this.selectionOrder = this.selectionOrder.filter(x => x !== ci);
       this._flashCard(ci, 0x888888);
     } else {
       this.cardStates[ci] = null;
@@ -151,16 +153,15 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   _refreshCards() {
-    let playerNum = 0;
     this.cards.forEach(({ border, badge }, ci) => {
       const state = this.cardStates[ci];
       if (state === 'human') {
-        const color = PLAYER_COLORS[playerNum];
+        const playerNum = this.selectionOrder.indexOf(ci);
+        const color = PLAYER_COLORS[Math.min(playerNum, 3)];
         border.setStrokeStyle(6, color, 1);
-        badge.setText(PLAYER_LABELS[playerNum])
+        badge.setText(PLAYER_LABELS[Math.min(playerNum, 3)])
           .setBackgroundColor('#' + color.toString(16).padStart(6, '0'))
           .setColor('#000000').setVisible(true);
-        playerNum++;
       } else if (state === 'cpu') {
         border.setStrokeStyle(4, 0x888888, 1);
         badge.setText('CPU').setBackgroundColor('#555555').setColor('#ffffff').setVisible(true);
@@ -187,17 +188,20 @@ export class CharacterSelectScene extends Phaser.Scene {
     const playerConfigs = [];
     let humanIndex = 0;
 
+    // Add humans in selection order so P1 = first picked, P2 = second, etc.
+    this.selectionOrder.forEach((ci, pi) => {
+      playerConfigs.push({
+        characterKey: CHAR_ORDER[ci],
+        inputType:    pi === 0 ? 'keyboard' : 'gamepad',
+        gamepadIndex: Math.max(0, pi - 1),
+        kbSlot:       pi,
+        isCPU:        false,
+      });
+    });
+
+    // Add CPU players
     this.cardStates.forEach((state, ci) => {
-      if (state === 'human') {
-        const pi = humanIndex++;
-        playerConfigs.push({
-          characterKey: CHAR_ORDER[ci],
-          inputType:    pi === 0 ? 'keyboard' : 'gamepad',
-          gamepadIndex: Math.max(0, pi - 1),
-          kbSlot:       pi,
-          isCPU:        false,
-        });
-      } else if (state === 'cpu') {
+      if (state === 'cpu') {
         playerConfigs.push({
           characterKey: CHAR_ORDER[ci],
           inputType:    'cpu',
