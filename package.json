@@ -2,15 +2,18 @@
   "name": "yusky-battle",
   "version": "0.1.0",
   "description": "Yusky Battle - Family Beat-em-up",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "crop-portraits": "node scripts/crop-portraits.js"
   },
   "dependencies": {
     "phaser": "^3.80.1"
   },
   "devDependencies": {
+    "sharp": "^0.34.5",
     "vite": "^5.4.0"
   }
 }

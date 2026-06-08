@@ -7,6 +7,14 @@ const PLAYER_LABELS = ['P1', 'P2', 'P3', 'P4'];
 export class CharacterSelectScene extends Phaser.Scene {
   constructor() { super('CharacterSelect'); }
 
+  preload() {
+    // Load portrait images — each character cropped from the title art.
+    // Generate them by running: npm run crop-portraits
+    CHAR_ORDER.forEach(key => {
+      this.load.image(`portrait_${key}`, `${key}-portrait.png`);
+    });
+  }
+
   create() {
     const { width: W, height: H } = this.scale;
 
@@ -37,14 +45,20 @@ export class CharacterSelectScene extends Phaser.Scene {
       const card = this.add.rectangle(x, y, charW, charH, 0x222244)
         .setStrokeStyle(3, 0x4444aa);
 
-      // Character color block
-      this.add.rectangle(x, y - 50, charW - 20, charH * 0.55, cfg.color);
-
-      // Eyes (simple)
-      this.add.rectangle(x - 14, y - 80, 16, 16, 0xffffff);
-      this.add.rectangle(x + 14, y - 80, 16, 16, 0xffffff);
-      this.add.rectangle(x - 11, y - 80,  8,  8, 0x000000);
-      this.add.rectangle(x + 17, y - 80,  8,  8, 0x000000);
+      // Portrait image (from cropped title art) or colored block fallback
+      const portraitKey = `portrait_${key}`;
+      if (this.textures.exists(portraitKey)) {
+        this.add.image(x, y - 50, portraitKey)
+          .setDisplaySize(charW - 20, charH * 0.55)
+          .setOrigin(0.5);
+      } else {
+        // Fallback: colored rectangle with eyes
+        this.add.rectangle(x, y - 50, charW - 20, charH * 0.55, cfg.color);
+        this.add.rectangle(x - 14, y - 80, 16, 16, 0xffffff);
+        this.add.rectangle(x + 14, y - 80, 16, 16, 0xffffff);
+        this.add.rectangle(x - 11, y - 80,  8,  8, 0x000000);
+        this.add.rectangle(x + 17, y - 80,  8,  8, 0x000000);
+      }
 
       // Name
       this.add.text(x, y + 60, cfg.name, {
