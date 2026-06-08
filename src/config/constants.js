@@ -52,8 +52,8 @@ export const CHAR_CONFIGS = {
     speed:       200,
     depthSpeed:  165,
     meleeDmg:    18,
-    rangedDmg:   15,
-    description: 'Tennis racket & lob shot.\nHeals from chicken legs.',
+    rangedDmg:   13,  // long range (2/3 screen), lower damage
+    description: 'Tennis racket & long lob (2/3 screen).\nHeals from chicken legs.',
   },
   miles: {
     key:         'miles',
@@ -65,10 +65,10 @@ export const CHAR_CONFIGS = {
     speed:       210,
     depthSpeed:  170,
     meleeDmg:    16,
-    ballDmg:     22,
+    ballDmg:     26,  // short range (1/3 screen), higher damage
     superMult:   2.0,
     superFill:   0.18,  // fraction of nuclear bar per hit landed
-    description: 'Soccer ball boomerang.\nNuclear super when bar fills.',
+    description: 'Soccer ball (1/3 screen, hard).\nNuclear super when bar fills.',
   },
   ocean: {
     key:         'ocean',
