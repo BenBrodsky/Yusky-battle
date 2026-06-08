@@ -28,10 +28,10 @@ export class Ocean extends Character {
     }).setOrigin(0.5).setVisible(false).setDepth(2000);
 
     // ── Stuffed rabbit visual ────────────────────────────────────────
-    // Body (pink ellipse) + two ear nubs (rectangles)
-    this.rabbitBody = scene.add.ellipse(0, 0, 14, 18, 0xf9e0e8).setDepth(this.groundY + 3); // cream-pink
-    this.rabbitEarL = scene.add.rectangle(0, 0, 4, 7, 0xe8a0b8).setDepth(this.groundY + 3); // medium pink
-    this.rabbitEarR = scene.add.rectangle(0, 0, 4, 7, 0xe8a0b8).setDepth(this.groundY + 3);
+    // Body (red ellipse) + two ear nubs (rectangles)
+    this.rabbitBody = scene.add.ellipse(0, 0, 14, 18, 0xdd2222).setDepth(this.groundY + 3); // red
+    this.rabbitEarL = scene.add.rectangle(0, 0, 4, 7, 0xbb1111).setDepth(this.groundY + 3); // dark red ears
+    this.rabbitEarR = scene.add.rectangle(0, 0, 4, 7, 0xbb1111).setDepth(this.groundY + 3);
     this.rabbitEye  = scene.add.circle(0, 0, 2, 0x000000).setDepth(this.groundY + 4);
     // Cord drawn with graphics each frame
     this.rabbitCord = scene.add.graphics().setDepth(this.groundY + 2);
