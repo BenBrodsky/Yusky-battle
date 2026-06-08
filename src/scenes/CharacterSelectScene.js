@@ -8,8 +8,7 @@ export class CharacterSelectScene extends Phaser.Scene {
   constructor() { super('CharacterSelect'); }
 
   preload() {
-    // Load portrait images — each character cropped from the title art.
-    // Generate them by running: npm run crop-portraits
+    this.load.image('select_bg', 'character-select-bg.png');
     CHAR_ORDER.forEach(key => {
       this.load.image(`portrait_${key}`, `${key}-portrait.png`);
     });
@@ -18,7 +17,13 @@ export class CharacterSelectScene extends Phaser.Scene {
   create() {
     const { width: W, height: H } = this.scale;
 
-    this.add.rectangle(W / 2, H / 2, W, H, 0x111133);
+    if (this.textures.exists('select_bg')) {
+      this.add.image(W / 2, H / 2, 'select_bg').setDisplaySize(W, H);
+      // Dark overlay so cards and text stay readable
+      this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45);
+    } else {
+      this.add.rectangle(W / 2, H / 2, W, H, 0x111133);
+    }
 
     this.add.text(W / 2, 40, 'CHOOSE YOUR FIGHTER', {
       fontSize: '36px', fontStyle: 'bold',
