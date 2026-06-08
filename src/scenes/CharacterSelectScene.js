@@ -32,24 +32,18 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.music.play();
     }
 
-    this.add.text(W / 2, 40, 'CHOOSE YOUR FIGHTER', {
+    this.add.text(W / 2, 40, 'CHOOSE YOUR FIGHTERS', {
       fontSize: '36px', fontStyle: 'bold',
       fill: '#ffdd00', stroke: '#664400', strokeThickness: 6,
     }).setOrigin(0.5);
 
-    this.add.text(W / 2, 82, 'X = Pick  ·  C = Add/Remove CPU  ·  ENTER = Start', {
-      fontSize: '14px', fill: '#888888',
+    this.add.text(W / 2, 82, '← → Browse  ·  X = Human ➜ CPU ➜ Off  ·  ENTER = Start', {
+      fontSize: '14px', fill: '#aaaaaa',
     }).setOrigin(0.5);
 
-    // ── Player state ─────────────────────────────────────────────────
-    // joined: human is present   cursorPos: nav cursor   lockedChar: confirmed pick (-1 = none)
-    this.players = Array.from({ length: 4 }, () => ({
-      joined: false, cursorPos: 0, lockedChar: -1,
-    }));
-    this.players[0].joined = true; // P1 always present
-
-    // CPU assignments: a Set of character indices P1 has opted in
-    this.cpuChars = new Set();
+    // ── Card state: null | 'human' | 'cpu' ───────────────────────────
+    this.cardStates = CHAR_ORDER.map(() => null);
+    this.cursorPos  = 0;
 
     // ── Portrait cards ────────────────────────────────────────────────
     const charW = 220, charH = 320;
@@ -84,180 +78,100 @@ export class CharacterSelectScene extends Phaser.Scene {
         wordWrap: { width: charW - 16 },
       }).setOrigin(0.5, 0);
 
-      // Flash overlay (triggered on selection)
       const flash  = this.add.rectangle(x, y, charW, charH, 0xffffff, 0).setDepth(8);
-      // Colored border (shown when locked)
       const border = this.add.rectangle(x, y, charW, charH, 0, 0).setStrokeStyle(0, 0, 0).setDepth(9);
-      // Player/CPU badge on top of portrait
       const badge  = this.add.text(x, y - charH / 2 + 22, '', {
         fontSize: '22px', fontStyle: 'bold',
         fill: '#000000', backgroundColor: '#ffff00',
         padding: { x: 10, y: 4 },
       }).setOrigin(0.5).setVisible(false).setDepth(10);
 
-      return { x, y, flash, border, badge, ci };
+      return { x, y, flash, border, badge };
     });
 
-    // ── Player cursors ────────────────────────────────────────────────
-    this.cursors = Array.from({ length: 4 }, (_, pi) =>
-      this.add.rectangle(0, 0, charW + 24, charH + 24, 0, 0)
-        .setStrokeStyle(5, PLAYER_COLORS[pi], 0).setDepth(7)
-    );
-    this.cursors[0].setStrokeStyle(5, PLAYER_COLORS[0], 1);
+    // ── Single cursor ─────────────────────────────────────────────────
+    this.cursor = this.add.rectangle(0, 0, charW + 24, charH + 24, 0, 0)
+      .setStrokeStyle(5, 0xffffff, 1).setDepth(7);
 
-    // ── Keyboard input ────────────────────────────────────────────────
-    this.keys1 = this.input.keyboard.addKeys({
+    // ── Input ─────────────────────────────────────────────────────────
+    this.keys = this.input.keyboard.addKeys({
       left:  Phaser.Input.Keyboard.KeyCodes.LEFT,
       right: Phaser.Input.Keyboard.KeyCodes.RIGHT,
-      pick:  Phaser.Input.Keyboard.KeyCodes.X,
-      cpu:   Phaser.Input.Keyboard.KeyCodes.C,
-    });
-    this.keys2 = this.input.keyboard.addKeys({
-      left:  Phaser.Input.Keyboard.KeyCodes.A,
-      right: Phaser.Input.Keyboard.KeyCodes.D,
-      pick:  Phaser.Input.Keyboard.KeyCodes.E,
+      x:     Phaser.Input.Keyboard.KeyCodes.X,
     });
 
-    // ── Bottom hints ──────────────────────────────────────────────────
-    this.startHint = this.add.text(W / 2, H - 38,
-      'ENTER to begin  ·  P2 keyboard: A/D + E to join', {
-      fontSize: '18px', fill: '#ffffff', stroke: '#000', strokeThickness: 4,
+    this.startHint = this.add.text(W / 2, H - 38, 'ENTER to start', {
+      fontSize: '20px', fill: '#ffffff', stroke: '#000', strokeThickness: 4,
     }).setOrigin(0.5);
     this.tweens.add({ targets: this.startHint, alpha: 0.2, duration: 500, yoyo: true, repeat: -1 });
 
     this.input.keyboard.on('keydown-ENTER', () => this._startGame());
-    this.input.keyboard.on('keydown-T',     () => this._startGame());
-
-    if (this.input.gamepad) {
-      this.input.gamepad.on('down', (pad, button) => {
-        const pi = pad.index + 2;
-        if (pi < 4 && !this.players[pi].joined && button.index === 0) {
-          this.players[pi].joined = true;
-          this.cursors[pi].setStrokeStyle(5, PLAYER_COLORS[pi], 1);
-        }
-      });
-    }
 
     this._refreshCards();
   }
 
   update() {
-    const pads = this.input.gamepad ? this.input.gamepad.gamepads : [];
-
-    this.players.forEach((player, pi) => {
-      if (!player.joined) return;
-
-      let moveLeft = false, moveRight = false, pick = false, toggleCPU = false;
-
-      if (pi === 0) {
-        // P1 can always navigate (even after locking) so they can add CPUs
-        moveLeft  = Phaser.Input.Keyboard.JustDown(this.keys1.left);
-        moveRight = Phaser.Input.Keyboard.JustDown(this.keys1.right);
-        pick      = player.lockedChar === -1 && Phaser.Input.Keyboard.JustDown(this.keys1.pick);
-        toggleCPU = Phaser.Input.Keyboard.JustDown(this.keys1.cpu);
-      } else if (pi === 1) {
-        const locked = player.lockedChar !== -1;
-        moveLeft  = !locked && Phaser.Input.Keyboard.JustDown(this.keys2.left);
-        moveRight = !locked && Phaser.Input.Keyboard.JustDown(this.keys2.right);
-        pick      = !locked && Phaser.Input.Keyboard.JustDown(this.keys2.pick);
-      } else {
-        const pad = pads[pi - 2];
-        if (pad) {
-          const ax     = pad.axes[0]?.getValue() ?? 0;
-          const locked = player.lockedChar !== -1;
-          moveLeft  = !locked && (ax < -0.5 || pad.buttons[14]?.pressed);
-          moveRight = !locked && (ax >  0.5 || pad.buttons[15]?.pressed);
-          pick      = !locked && pad.buttons[2]?.pressed;
-        }
-      }
-
-      if (moveLeft) {
-        player.cursorPos = (player.cursorPos - 1 + CHAR_ORDER.length) % CHAR_ORDER.length;
-        this._playMove();
-      }
-      if (moveRight) {
-        player.cursorPos = (player.cursorPos + 1) % CHAR_ORDER.length;
-        this._playMove();
-      }
-
-      if (pick) {
-        const takenByHuman = this.players.some((p, i) => i !== pi && p.lockedChar === player.cursorPos);
-        if (!takenByHuman) {
-          player.lockedChar = player.cursorPos;
-          this.cpuChars.delete(player.cursorPos); // humans override CPU
-          this._flashCard(player.cursorPos, PLAYER_COLORS[pi]);
-        }
-      }
-
-      // P1 only: press C to toggle CPU on the currently hovered card
-      if (toggleCPU) {
-        const ci = player.cursorPos;
-        const takenByHuman = this.players.some(p => p.lockedChar === ci);
-        if (!takenByHuman) {
-          if (this.cpuChars.has(ci)) {
-            this.cpuChars.delete(ci);
-          } else {
-            this.cpuChars.add(ci);
-            this._flashCard(ci, 0xaaaaaa);
-          }
-        }
-      }
-    });
+    if (Phaser.Input.Keyboard.JustDown(this.keys.left)) {
+      this.cursorPos = (this.cursorPos - 1 + CHAR_ORDER.length) % CHAR_ORDER.length;
+      this._playMove();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.right)) {
+      this.cursorPos = (this.cursorPos + 1) % CHAR_ORDER.length;
+      this._playMove();
+    }
+    if (Phaser.Input.Keyboard.JustDown(this.keys.x)) {
+      this._cycleCard(this.cursorPos);
+    }
 
     this._refreshCards();
+  }
+
+  _cycleCard(ci) {
+    const prev = this.cardStates[ci];
+    if (prev === null) {
+      this.cardStates[ci] = 'human';
+      // Pick the color this card will display as (nth human slot)
+      const humanIdx = this.cardStates.filter(s => s === 'human').length - 1;
+      this._flashCard(ci, PLAYER_COLORS[Math.min(humanIdx, 3)]);
+    } else if (prev === 'human') {
+      this.cardStates[ci] = 'cpu';
+      this._flashCard(ci, 0x888888);
+    } else {
+      this.cardStates[ci] = null;
+    }
   }
 
   _flashCard(ci, color) {
     const { flash } = this.cards[ci];
     flash.setFillStyle(color, 0.85).setAlpha(1);
     this.tweens.add({
-      targets: flash,
-      alpha: 0,
-      duration: 100,
-      yoyo: true,
-      repeat: 3,
+      targets: flash, alpha: 0, duration: 100, yoyo: true, repeat: 3,
       onComplete: () => flash.setAlpha(0),
     });
   }
 
   _refreshCards() {
-    // Reset borders and badges
-    this.cards.forEach(card => {
-      card.border.setStrokeStyle(0, 0, 0);
-      card.badge.setVisible(false);
-    });
-
-    // CPU badges (drawn first; human badges will overdraw if same card)
-    this.cpuChars.forEach(ci => {
-      const card = this.cards[ci];
-      card.border.setStrokeStyle(4, 0x888888, 1);
-      card.badge.setText('CPU')
-        .setBackgroundColor('#555555')
-        .setColor('#ffffff')
-        .setVisible(true);
-    });
-
-    // Human player badges and cursors
-    this.players.forEach((player, pi) => {
-      if (!player.joined) return;
-
-      // Cursor: always visible for P1 (for CPU nav), hidden for others when locked
-      const showCursor = pi === 0 || player.lockedChar === -1;
-      const cursorCard = this.cards[player.cursorPos];
-      this.cursors[pi]
-        .setPosition(cursorCard.x, cursorCard.y)
-        .setAlpha(showCursor ? 1 : 0);
-
-      if (player.lockedChar !== -1) {
-        const card = this.cards[player.lockedChar];
-        const hexColor = '#' + PLAYER_COLORS[pi].toString(16).padStart(6, '0');
-        card.border.setStrokeStyle(6, PLAYER_COLORS[pi], 1);
-        card.badge.setText(PLAYER_LABELS[pi])
-          .setBackgroundColor(hexColor)
-          .setColor('#000000')
-          .setVisible(true);
+    let playerNum = 0;
+    this.cards.forEach(({ border, badge }, ci) => {
+      const state = this.cardStates[ci];
+      if (state === 'human') {
+        const color = PLAYER_COLORS[playerNum];
+        border.setStrokeStyle(6, color, 1);
+        badge.setText(PLAYER_LABELS[playerNum])
+          .setBackgroundColor('#' + color.toString(16).padStart(6, '0'))
+          .setColor('#000000').setVisible(true);
+        playerNum++;
+      } else if (state === 'cpu') {
+        border.setStrokeStyle(4, 0x888888, 1);
+        badge.setText('CPU').setBackgroundColor('#555555').setColor('#ffffff').setVisible(true);
+      } else {
+        border.setStrokeStyle(0, 0, 0);
+        badge.setVisible(false);
       }
     });
+
+    const card = this.cards[this.cursorPos];
+    this.cursor.setPosition(card.x, card.y);
   }
 
   _playMove() {
@@ -267,27 +181,29 @@ export class CharacterSelectScene extends Phaser.Scene {
   }
 
   _startGame() {
-    if (this.players[0].lockedChar === -1) return; // P1 must pick first
+    const hasHuman = this.cardStates.some(s => s === 'human');
+    if (!hasHuman) return;
 
     const playerConfigs = [];
+    let humanIndex = 0;
 
-    this.players.forEach((player, pi) => {
-      if (!player.joined || player.lockedChar === -1) return;
-      playerConfigs.push({
-        characterKey: CHAR_ORDER[player.lockedChar],
-        inputType:    pi < 2 ? 'keyboard' : 'gamepad',
-        gamepadIndex: pi < 2 ? 0 : pi - 2,
-        kbSlot:       pi,
-        isCPU:        false,
-      });
-    });
-
-    this.cpuChars.forEach(ci => {
-      playerConfigs.push({
-        characterKey: CHAR_ORDER[ci],
-        inputType:    'cpu',
-        isCPU:        true,
-      });
+    this.cardStates.forEach((state, ci) => {
+      if (state === 'human') {
+        const pi = humanIndex++;
+        playerConfigs.push({
+          characterKey: CHAR_ORDER[ci],
+          inputType:    pi === 0 ? 'keyboard' : 'gamepad',
+          gamepadIndex: Math.max(0, pi - 1),
+          kbSlot:       pi,
+          isCPU:        false,
+        });
+      } else if (state === 'cpu') {
+        playerConfigs.push({
+          characterKey: CHAR_ORDER[ci],
+          inputType:    'cpu',
+          isCPU:        true,
+        });
+      }
     });
 
     this.music?.stop();
