@@ -9,8 +9,9 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   preload() {
     this.load.image('select_bg', 'character-select-bg.png');
-    this.load.audio('cursor_move', 'cursor-move.wav');
-    this.load.audio('game_start',  'game-start.wav');
+    this.load.audio('select_music', 'select-music.m4a');
+    this.load.audio('cursor_move',  'cursor-move.wav');
+    this.load.audio('game_start',   'game-start.wav');
     CHAR_ORDER.forEach(key => {
       this.load.image(`portrait_${key}`, `${key}-portrait.png`);
     });
@@ -24,6 +25,11 @@ export class CharacterSelectScene extends Phaser.Scene {
       this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45);
     } else {
       this.add.rectangle(W / 2, H / 2, W, H, 0x111133);
+    }
+
+    if (this.cache.audio.exists('select_music')) {
+      this.music = this.sound.add('select_music', { loop: true, volume: 0.7 });
+      this.music.play();
     }
 
     this.add.text(W / 2, 40, 'CHOOSE YOUR FIGHTER', {
@@ -284,6 +290,7 @@ export class CharacterSelectScene extends Phaser.Scene {
       });
     });
 
+    this.music?.stop();
     if (this.cache.audio.exists('game_start')) {
       this.sound.play('game_start', { volume: 0.8 });
       this.time.delayedCall(1200, () => this.scene.start('Game', { playerConfigs, levelIndex: 0 }));
