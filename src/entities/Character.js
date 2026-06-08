@@ -165,6 +165,12 @@ export class Character {
 
     if (this.comboTimer <= 0) this.comboStep = 0;
 
+    // Release attack state once its timer expires so the next attack and jump work
+    if (this.state === 'attack' && this.stateTimer <= 0) {
+      this.state = 'idle';
+      this.hitThisSwing = false;
+    }
+
     if (this.isKO) {
       this._updateKO(dt);
       this._syncSprites();
@@ -175,6 +181,7 @@ export class Character {
       this._applyPhysics(dt);
       this.velX *= 0.8;
       this._syncSprites();
+      if (this.stateTimer <= 0) this.state = 'idle';
       return;
     }
 
