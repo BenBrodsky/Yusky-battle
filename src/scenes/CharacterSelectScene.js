@@ -147,7 +147,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     const { flash } = this.cards[ci];
     flash.setFillStyle(color, 0.85).setAlpha(1);
     this.tweens.add({
-      targets: flash, alpha: 0, duration: 100, yoyo: true, repeat: 3,
+      targets: flash, alpha: 0, duration: 80, yoyo: true, repeat: 1,
       onComplete: () => flash.setAlpha(0),
     });
   }
