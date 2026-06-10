@@ -2,8 +2,8 @@ export const GAME_WIDTH  = 1280;
 export const GAME_HEIGHT = 720;
 
 // The walkable floor band (Y in screen/world space)
-export const FLOOR_TOP    = 430;
-export const FLOOR_BOTTOM = 685;
+export const FLOOR_TOP    = 470;
+export const FLOOR_BOTTOM = 680;
 
 // Physics
 export const GRAVITY       = 1800;   // px/s^2 downward for jump arc

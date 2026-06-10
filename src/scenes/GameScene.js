@@ -85,12 +85,9 @@ export class GameScene extends Phaser.Scene {
     const key = levelData.bgImage;
 
     if (key && this.textures.exists(key)) {
-      // Scale image to fill game height, tile horizontally across world
-      const frame = this.textures.getFrame(key);
-      const tileScale = GAME_HEIGHT / frame.realHeight;
-      this.add.tileSprite(0, 0, worldWidth, GAME_HEIGHT, key)
-        .setOrigin(0, 0)
-        .setTileScale(tileScale, tileScale)
+      // Display once across the full world width — no tiling
+      this.add.image(worldWidth / 2, GAME_HEIGHT / 2, key)
+        .setDisplaySize(worldWidth, GAME_HEIGHT)
         .setDepth(-10);
     } else {
       // Fallback: programmatic gradient + ground
