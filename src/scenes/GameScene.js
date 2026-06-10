@@ -24,6 +24,9 @@ export class GameScene extends Phaser.Scene {
   preload() {
     const key = LEVEL_1.bgImage;
     if (key) this.load.image(key, `${key}.png`);
+    this.load.audio('level1-music', 'level1-music.mp3');
+    // Add 'boss-music.mp3' to public/ and uncomment to enable boss music:
+    // this.load.audio('boss-music', 'boss-music.mp3');
   }
 
   init(data) {
@@ -31,6 +34,8 @@ export class GameScene extends Phaser.Scene {
     this.currentLevel   = LEVEL_1;
     this.familyCards    = 0;
     this.bossEnemy      = null;
+    this.levelMusic     = null;
+    this.bossMusic      = null;
   }
 
   create() {
@@ -77,6 +82,10 @@ export class GameScene extends Phaser.Scene {
 
     // ---- Launch HUD overlay ----
     if (!this.scene.isActive('HUD')) this.scene.launch('HUD');
+
+    // ---- Music ----
+    this.levelMusic = this.sound.add('level1-music', { loop: true, volume: 0.75 });
+    this.levelMusic.play();
   }
 
   // ── Build level background ──────────────────────────────────────────
@@ -183,10 +192,22 @@ export class GameScene extends Phaser.Scene {
     if (def.kind === 'bullykng') {
       enemy = new BullyKing(this, def.x, def.y);
       this.bossEnemy = enemy;
+      this._startBossMusic();
     } else {
       enemy = new MeanKid(this, def.x, def.y);
     }
     this.enemies.push(enemy);
+  }
+
+  _startBossMusic() {
+    if (this.levelMusic?.isPlaying) {
+      this.tweens.add({
+        targets: this.levelMusic, volume: 0, duration: 2500,
+        onComplete: () => this.levelMusic?.stop(),
+      });
+    }
+    // Swap comment below when you add public/boss-music.mp3:
+    // if (this.bossMusic) { this.bossMusic.setVolume(0).play(); this.tweens.add({ targets: this.bossMusic, volume: 0.75, duration: 2500 }); }
   }
 
   _spawnPickup(def) {
@@ -430,17 +451,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   _onBossDefeated() {
+    if (this.bossMusic?.isPlaying) {
+      this.tweens.add({ targets: this.bossMusic, volume: 0, duration: 1500, onComplete: () => this.bossMusic?.stop() });
+    }
     this._showMessage('STAGE CLEAR!', 0xffdd00, 2000);
     this.time.delayedCall(3000, () => this._stageComplete());
   }
 
   _gameOver() {
+    this.levelMusic?.stop();
+    this.bossMusic?.stop();
     this.scene.stop('HUD');
     this.scene.start('Title');
   }
 
   _stageComplete() {
-    // For now loop back to title (future: advance to next level)
+    this.levelMusic?.stop();
+    this.bossMusic?.stop();
     this.scene.stop('HUD');
     this.scene.start('Title');
   }
