@@ -22,9 +22,8 @@ export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
   preload() {
-    (LEVEL_1.bgPanels ?? []).forEach(key => {
-      this.load.image(key, `${key}.png`);
-    });
+    const key = LEVEL_1.bgImage;
+    if (key) this.load.image(key, `${key}.png`);
   }
 
   init(data) {
@@ -83,16 +82,13 @@ export class GameScene extends Phaser.Scene {
   // ── Build level background ──────────────────────────────────────────
 
   _buildBackground(levelData, worldWidth) {
-    const panels = levelData.bgPanels ?? [];
-    const panelW = GAME_WIDTH;   // each panel covers exactly one screen width
-    const panelH = GAME_HEIGHT;
+    const key = levelData.bgImage;
 
-    if (panels.length > 0 && panels.every(k => this.textures.exists(k))) {
-      panels.forEach((key, i) => {
-        this.add.image(panelW * i + panelW / 2, panelH / 2, key)
-          .setDisplaySize(panelW, panelH)
-          .setDepth(-10);
-      });
+    if (key && this.textures.exists(key)) {
+      // Single wide image spanning the full world width
+      this.add.image(worldWidth / 2, GAME_HEIGHT / 2, key)
+        .setDisplaySize(worldWidth, GAME_HEIGHT)
+        .setDepth(-10);
     } else {
       // Fallback: programmatic gradient + ground
       const { bgColor, groundColor } = levelData;
@@ -116,7 +112,7 @@ export class GameScene extends Phaser.Scene {
       deco.setDepth(-7);
     }
 
-    // Subtle depth-lane lines help readability regardless of background
+    // Subtle depth-lane lines
     const lines = this.add.graphics();
     lines.lineStyle(1, 0x000000, 0.07);
     for (let y = FLOOR_TOP; y <= FLOOR_BOTTOM; y += 30) {
