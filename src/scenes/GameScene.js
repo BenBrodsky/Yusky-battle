@@ -21,6 +21,12 @@ function boxOverlap(a, b) {
 export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
+  preload() {
+    (LEVEL_1.bgPanels ?? []).forEach(key => {
+      this.load.image(key, `${key}.png`);
+    });
+  }
+
   init(data) {
     this.playerConfigs  = data.playerConfigs || [];
     this.currentLevel   = LEVEL_1;
@@ -77,43 +83,46 @@ export class GameScene extends Phaser.Scene {
   // ── Build level background ──────────────────────────────────────────
 
   _buildBackground(levelData, worldWidth) {
-    const { bgColor, groundColor } = levelData;
-    const H = GAME_HEIGHT;
+    const panels = levelData.bgPanels ?? [];
+    const panelW = GAME_WIDTH;   // each panel covers exactly one screen width
+    const panelH = GAME_HEIGHT;
 
-    // Sky
-    const sky = this.add.graphics();
-    sky.fillGradientStyle(bgColor, bgColor, 0x4488cc, 0x4488cc, 1);
-    sky.fillRect(0, 0, worldWidth, FLOOR_TOP);
-    sky.setDepth(-10);
+    if (panels.length > 0 && panels.every(k => this.textures.exists(k))) {
+      panels.forEach((key, i) => {
+        this.add.image(panelW * i + panelW / 2, panelH / 2, key)
+          .setDisplaySize(panelW, panelH)
+          .setDepth(-10);
+      });
+    } else {
+      // Fallback: programmatic gradient + ground
+      const { bgColor, groundColor } = levelData;
+      const sky = this.add.graphics();
+      sky.fillGradientStyle(bgColor, bgColor, 0x4488cc, 0x4488cc, 1);
+      sky.fillRect(0, 0, worldWidth, FLOOR_TOP);
+      sky.setDepth(-10);
 
-    // Ground
-    const gnd = this.add.graphics();
-    gnd.fillStyle(groundColor, 1);
-    gnd.fillRect(0, FLOOR_TOP, worldWidth, H - FLOOR_TOP);
-    gnd.setDepth(-9);
+      const gnd = this.add.graphics();
+      gnd.fillStyle(groundColor, 1);
+      gnd.fillRect(0, FLOOR_TOP, worldWidth, GAME_HEIGHT - FLOOR_TOP);
+      gnd.setDepth(-9);
 
-    // Perspective lane lines
-    const lines = this.add.graphics();
-    lines.lineStyle(1, 0x000000, 0.15);
-    for (let i = 0; i <= 20; i++) {
-      const t = i / 20;
-      const x = t * worldWidth;
-      lines.lineBetween(x, FLOOR_TOP, x, FLOOR_BOTTOM);
+      const deco = this.add.graphics();
+      deco.fillStyle(0x335577, 0.5);
+      for (let x = 0; x < worldWidth; x += 200) {
+        const h = Phaser.Math.Between(60, 140);
+        deco.fillRect(x + 20, FLOOR_TOP - h, 60, h);
+        deco.fillRect(x + 120, FLOOR_TOP - h * 0.7, 40, h * 0.7);
+      }
+      deco.setDepth(-7);
     }
+
+    // Subtle depth-lane lines help readability regardless of background
+    const lines = this.add.graphics();
+    lines.lineStyle(1, 0x000000, 0.07);
     for (let y = FLOOR_TOP; y <= FLOOR_BOTTOM; y += 30) {
       lines.lineBetween(0, y, worldWidth, y);
     }
     lines.setDepth(-8);
-
-    // Distant city silhouette (decorative rectangles)
-    const deco = this.add.graphics();
-    deco.fillStyle(0x335577, 0.5);
-    for (let x = 0; x < worldWidth; x += 200) {
-      const h = Phaser.Math.Between(60, 140);
-      deco.fillRect(x + 20, FLOOR_TOP - h, 60, h);
-      deco.fillRect(x + 120, FLOOR_TOP - h * 0.7, 40, h * 0.7);
-    }
-    deco.setDepth(-7);
   }
 
   // ── Main update ────────────────────────────────────────────────────

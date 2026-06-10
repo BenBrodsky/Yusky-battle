@@ -7,6 +7,7 @@ export const LEVEL_1 = {
   worldWidth: 6400,
   bgColor:    0x87ceeb,
   groundColor:0x6a9a4a,
+  bgPanels:   ['level1_bg_a', 'level1_bg_b', 'level1_bg_c', 'level1_bg_d', 'level1_bg_e'],
 
   entries: [
     // ---- Gate 1 ----
