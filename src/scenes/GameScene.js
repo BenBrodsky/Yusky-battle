@@ -25,8 +25,7 @@ export class GameScene extends Phaser.Scene {
     const key = LEVEL_1.bgImage;
     if (key) this.load.image(key, `${key}.png`);
     this.load.audio('level1-music', 'level1-music.mp3');
-    // Add 'boss-music.mp3' to public/ and uncomment to enable boss music:
-    // this.load.audio('boss-music', 'boss-music.mp3');
+    this.load.audio('boss-music',   'boss-music.mp3');
   }
 
   init(data) {
@@ -206,8 +205,11 @@ export class GameScene extends Phaser.Scene {
         onComplete: () => this.levelMusic?.stop(),
       });
     }
-    // Swap comment below when you add public/boss-music.mp3:
-    // if (this.bossMusic) { this.bossMusic.setVolume(0).play(); this.tweens.add({ targets: this.bossMusic, volume: 0.75, duration: 2500 }); }
+    if (this.cache.audio.exists('boss-music')) {
+      this.bossMusic = this.sound.add('boss-music', { loop: true, volume: 0 });
+      this.bossMusic.play();
+      this.tweens.add({ targets: this.bossMusic, volume: 0.75, duration: 2500 });
+    }
   }
 
   _spawnPickup(def) {
