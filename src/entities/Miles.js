@@ -138,11 +138,10 @@ export class Miles extends Character {
     const sy2        = baseScale * depthScale * this.sprite.scaleY;
     const alpha      = this.sprite.alpha;
 
-    // Pendulum walk: 1→2→3→2→1→... idle holds frame 1
-    const seqIdx   = (this.state === 'walk')
-      ? Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length
-      : 0;
-    const frameNum = WALK_SEQUENCE[seqIdx]; // 0-based index into direction's 3 frames
+    // Pendulum walk: 1→2→3→2→1→... idle holds legs-together frame (index 2)
+    const frameNum = (this.state === 'walk')
+      ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
+      : 2;
     const dirOff   = this.facing === 'right' ? 0 : 3; // r: 0-2, l: 3-5
     const frameIdx = dirOff + frameNum;
 
