@@ -28,10 +28,8 @@ const config = {
     gamepad: true,
   },
   render: {
-    pixelArt:           false,
-    antialias:          true,
-    roundPixels:        false,
-    premultipliedAlpha: false,  // PNGs use straight alpha; prevents white-box fringing
+    pixelArt:  false,
+    antialias: true,
   },
   audio: {
     disableWebAudio: false,
