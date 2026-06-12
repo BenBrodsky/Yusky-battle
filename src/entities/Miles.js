@@ -23,10 +23,6 @@ export class Miles extends Character {
     this.superActive = false;
     this.superTimer  = 0;
 
-    // Nuclear meter bar (shown above head)
-    this.nuclearBg  = this.scene.add.rectangle(0, 0, config.width, 5, 0x004400);
-    this.nuclearBar = this.scene.add.rectangle(0, 0, 0, 5, 0x00ff44);
-
     // Walk sprite — overlays the placeholder rectangle when textures are loaded
     this._initWalkSprite();
   }
@@ -105,18 +101,6 @@ export class Miles extends Character {
   _syncSprites() {
     super._syncSprites();
 
-    // Nuclear bar
-    const sy = this.groundY - this.jumpZ;
-    const bx = this.worldX;
-    const by = sy - this.config.height - 22;
-    this.nuclearBg.x  = bx;
-    this.nuclearBg.y  = by;
-    this.nuclearBar.width = this.config.width * this.nuclear;
-    this.nuclearBar.x = bx - (this.config.width - this.config.width * this.nuclear) / 2;
-    this.nuclearBar.y = by;
-    this.nuclearBg.setDepth(this.groundY + 2);
-    this.nuclearBar.setDepth(this.groundY + 2);
-
     // Super glow on placeholder sprite (also mirrors to walkSprite via alpha below)
     if (this.superActive) {
       const glow = 0.7 + Math.sin(Date.now() / 120) * 0.3;
@@ -124,6 +108,8 @@ export class Miles extends Character {
     }
 
     if (!this._hasSprites) return;
+
+    const sy = this.groundY - this.jumpZ;
 
     // Hide placeholder rectangle and eyes; walkSprite takes over visually
     this.sprite.setVisible(false);
@@ -205,8 +191,6 @@ export class Miles extends Character {
 
   destroy() {
     super.destroy();
-    this.nuclearBg.destroy();
-    this.nuclearBar.destroy();
     this.walkFrames?.forEach(f => f.destroy());
   }
 }

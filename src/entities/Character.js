@@ -68,13 +68,6 @@ export class Character {
       8, 8, 0xffffff
     );
 
-    // Name label
-    this.nameLabel = scene.add.text(
-      this.worldX, this.groundY - config.height - 6,
-      config.name,
-      { fontSize: '11px', fill: '#ffffff', stroke: '#000000', strokeThickness: 3 }
-    ).setOrigin(0.5, 1);
-
   }
 
   _createKOStars() {
@@ -335,10 +328,6 @@ export class Character {
     this.eyeL.setDepth(this.groundY + 1);
     this.eyeR.setDepth(this.groundY + 1);
 
-    this.nameLabel.x = this.worldX;
-    this.nameLabel.y = sy - this.config.height - 4;
-    this.nameLabel.setDepth(this.groundY + 2);
-
     // Walking bob
     if (this.state === 'walk') {
       const bob = Math.sin(Date.now() / 100) * 2;
@@ -366,7 +355,6 @@ export class Character {
     this.sprite.setVisible(v);
     this.eyeL.setVisible(v);
     this.eyeR.setVisible(v);
-    this.nameLabel.setVisible(v);
     this.shadow.setVisible(v);
   }
 
@@ -375,7 +363,6 @@ export class Character {
     this.shadow.destroy();
     this.eyeL.destroy();
     this.eyeR.destroy();
-    this.nameLabel.destroy();
     this.koStars.forEach(s => s.destroy());
   }
 }
