@@ -161,9 +161,11 @@ export class Projectile {
       this.shadow.setSize(shadowBase * scale, shadowBase * scale * 0.35);
     }
 
-    if (this.kind === 'soccer') {
-      // Spin tracks roll speed; a stopped ball doesn't spin
-      this.sprite.rotation += 0.25 * (this.velX / 540);
+    if (this.kind === 'soccer' && this.velX !== 0) {
+      // Fast spin the whole time it's moving (floor keeps it lively as it
+      // slows); only a stopped ball stops spinning
+      const rate = Math.max(0.16, 0.3 * Math.abs(this.velX) / 540);
+      this.sprite.rotation += Math.sign(this.velX) * rate;
     }
   }
 }
