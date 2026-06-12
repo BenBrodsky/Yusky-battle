@@ -219,7 +219,8 @@ export class Character {
       this.state = 'jump';
     }
 
-    if (!this.isGrounded()) {
+    // Run while airborne OR at launch (jumpZ is still 0 on the press frame)
+    if (!this.isGrounded() || this.velZ > 0) {
       this.velZ -= GRAVITY * dt;
       this.jumpZ += this.velZ * dt;
       if (this.jumpZ <= 0) {
