@@ -24,14 +24,21 @@ export class Projectile {
     this.velX    = dir * speed;
     this.hitEnemies = new Set();
 
-    this.sprite = scene.add.circle(
-      worldX, groundY,
-      kind === 'soccer' ? 10 : 8,
-      kind === 'soccer' ? 0xffffff : 0xddff00
-    );
+    const hasTexture = textureKey && scene.textures.exists(textureKey);
+    if (hasTexture) {
+      this.sprite = scene.add.image(worldX, groundY, textureKey)
+        .setDisplaySize(kind === 'soccer' ? 30 : 18, kind === 'soccer' ? 30 : 18);
+    } else {
+      this.sprite = scene.add.circle(
+        worldX, groundY,
+        kind === 'soccer' ? 10 : 8,
+        kind === 'soccer' ? 0xffffff : 0xddff00
+      );
+    }
     this.sprite.setDepth(groundY + 5);
 
-    this.shadow = scene.add.ellipse(worldX, groundY + 2, 20, 8, 0x000000, 0.25);
+    const shadowW = kind === 'soccer' ? 28 : 18;
+    this.shadow = scene.add.ellipse(worldX, groundY + 2, shadowW, shadowW * 0.35, 0x000000, 0.28);
     this.shadow.setDepth(groundY - 1);
   }
 
