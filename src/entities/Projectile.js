@@ -2,7 +2,10 @@ import { GAME_WIDTH, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
 // Range constants (in world pixels)
 const TENNIS_RANGE = Math.round(GAME_WIDTH * (2 / 3)); // ~853px — long lob
-const SOCCER_RANGE = Math.round(GAME_WIDTH * (1 / 3)); // ~427px — hard low drive
+
+const SOCCER_FRICTION    = 320; // px/s^2 — rolls to a stop in ~1.7s (~455px)
+const SOCCER_RETURN_SPEED = 560; // px/s homing back to Miles after a hit
+const PICKUP_RADIUS       = 42; // px — Miles touches a stopped ball to reclaim it
 
 const DEPTH_SCALE_MIN = 0.6;
 const DEPTH_SCALE_MAX = 1.3;
@@ -18,10 +21,11 @@ export class Projectile {
     this.owner     = owner;
     this.active    = true;
     this.returning = false;
+    this.loose     = false;  // soccer: rolled to a stop, waiting to be picked up
     this.onReturn  = null;
 
     this.launchX  = worldX;
-    this.maxRange = kind === 'tennis' ? TENNIS_RANGE : SOCCER_RANGE;
+    this.maxRange = TENNIS_RANGE;
 
     const speed  = kind === 'soccer' ? 540 : 460;
     this.velX    = dir * speed;
@@ -52,9 +56,16 @@ export class Projectile {
     this.shadow.setDepth(groundY - 1);
   }
 
-  update(dt, _gameScene) {
+  update(dt, gameScene) {
     if (!this.active) return;
 
+    if (this.kind === 'soccer') this._updateSoccer(dt, gameScene);
+    else                        this._updateTennis(dt);
+
+    if (this.active) this._syncSprite();
+  }
+
+  _updateTennis(dt) {
     if (this.returning) {
       const dx    = this.owner.worldX - this.worldX;
       this.velX   = Math.sign(dx) * 520;
@@ -70,8 +81,45 @@ export class Projectile {
         this.velX      = -this.velX;
       }
     }
+  }
 
-    this._syncSprite();
+  _updateSoccer(dt, gameScene) {
+    if (this.returning) {
+      // Home in on Miles' current position (both axes) until it reaches him
+      const dx   = this.owner.worldX  - this.worldX;
+      const dy   = this.owner.groundY - this.groundY;
+      const dist = Math.hypot(dx, dy);
+      if (dist < PICKUP_RADIUS) { this._return(); return; }
+      this.worldX  += (dx / dist) * SOCCER_RETURN_SPEED * dt;
+      this.groundY += (dy / dist) * SOCCER_RETURN_SPEED * dt;
+      this.velX = Math.sign(dx) * SOCCER_RETURN_SPEED; // drives spin direction
+      return;
+    }
+
+    if (this.loose) {
+      // Ball sits on the ground until Miles touches it
+      const dx = this.owner.worldX  - this.worldX;
+      const dy = this.owner.groundY - this.groundY;
+      if (Math.hypot(dx, dy) < PICKUP_RADIUS) this._return();
+      return;
+    }
+
+    // Rolling: friction bleeds speed until the ball stops
+    this.worldX += this.velX * dt;
+    const speed = Math.max(0, Math.abs(this.velX) - SOCCER_FRICTION * dt);
+    this.velX   = Math.sign(this.velX) * speed;
+
+    // Don't roll out of the reachable world
+    const maxX = (gameScene?.currentLevel?.worldWidth ?? Infinity) - 24;
+    if (this.worldX < 24 || this.worldX > maxX) {
+      this.worldX = Math.min(Math.max(this.worldX, 24), maxX);
+      this.velX   = 0;
+    }
+
+    if (speed < 20 || this.velX === 0) {
+      this.velX  = 0;
+      this.loose = true;
+    }
   }
 
   overlaps(entity) {
@@ -84,8 +132,8 @@ export class Projectile {
   onHitEnemy(enemy) {
     if (this.hitEnemies.has(enemy)) return;
     this.hitEnemies.add(enemy);
-    // Tennis ball bounces back on first hit; soccer ball punches through
-    if (this.kind === 'tennis' && !this.returning) {
+    // Both balls bounce back on first hit; soccer homes to Miles from there
+    if (!this.returning) {
       this.returning = true;
       this.velX      = -this.velX * 0.75;
     }
@@ -114,7 +162,8 @@ export class Projectile {
     }
 
     if (this.kind === 'soccer') {
-      this.sprite.rotation += 0.12 * Math.sign(this.velX);
+      // Spin tracks roll speed; a stopped ball doesn't spin
+      this.sprite.rotation += 0.12 * (this.velX / 540);
     }
   }
 }

@@ -255,9 +255,9 @@ export class GameScene extends Phaser.Scene {
       });
     });
 
-    // Projectiles → enemies
+    // Projectiles → enemies (a soccer ball at rest is harmless)
     this.projectiles.forEach(proj => {
-      if (!proj.active) return;
+      if (!proj.active || proj.loose) return;
       this.enemies.forEach(enemy => {
         if (!enemy.active || enemy.state === 'dead') return;
         if (proj.overlaps(enemy) && !proj.hitEnemies.has(enemy)) {
