@@ -1,8 +1,11 @@
-import { GAME_WIDTH } from '../config/constants.js';
+import { GAME_WIDTH, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
 // Range constants (in world pixels)
 const TENNIS_RANGE = Math.round(GAME_WIDTH * (2 / 3)); // ~853px — long lob
 const SOCCER_RANGE = Math.round(GAME_WIDTH * (1 / 3)); // ~427px — hard low drive
+
+const DEPTH_SCALE_MIN = 0.6;
+const DEPTH_SCALE_MAX = 1.3;
 
 export class Projectile {
   constructor(scene, worldX, groundY, textureKey, dir, damage, kind, owner) {
@@ -32,6 +35,8 @@ export class Projectile {
       const srcH = src?.height || this.sprite.height;
       const dispH = kind === 'soccer' ? 50 : 24;
       const dispW = srcH > 0 ? Math.round(srcW / srcH * dispH) : dispH;
+      this._baseW = dispW;
+      this._baseH = dispH;
       this.sprite.setDisplaySize(dispW, dispH);
     } else {
       this.sprite = scene.add.circle(
@@ -99,6 +104,14 @@ export class Projectile {
     this.sprite.setDepth(this.groundY + 5);
     this.shadow.x = this.worldX;
     this.shadow.y = this.groundY + 4;
+
+    if (this._baseW) {
+      const t = Math.max(0, Math.min(1, (this.groundY - FLOOR_TOP) / (FLOOR_BOTTOM - FLOOR_TOP)));
+      const scale = DEPTH_SCALE_MIN + t * (DEPTH_SCALE_MAX - DEPTH_SCALE_MIN);
+      this.sprite.setDisplaySize(Math.round(this._baseW * scale), Math.round(this._baseH * scale));
+      const shadowBase = this.kind === 'soccer' ? 28 : 18;
+      this.shadow.setSize(shadowBase * scale, shadowBase * scale * 0.35);
+    }
 
     if (this.kind === 'soccer') {
       this.sprite.rotation += 0.12 * Math.sign(this.velX);
