@@ -2,16 +2,20 @@ import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
 import { MELEE_RANGE, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
-const WALK_FRAME_MS    = 160;
+const WALK_FRAME_MS    = 110;
 const BASE_SPRITE_H    = 160; // display height at mid-floor (scales with depth)
 const DEPTH_SCALE_MIN  = 0.6; // scale at FLOOR_TOP (far away)
 const DEPTH_SCALE_MAX  = 1.3; // scale at FLOOR_BOTTOM (close up)
+// 6-frame walk cycle per direction, plus idle (legs together) at index 6
 const WALK_SPRITE_KEYS = [
   'miles_walk_r1', 'miles_walk_r2', 'miles_walk_r3',
+  'miles_walk_r4', 'miles_walk_r5', 'miles_walk_r6', 'miles_idle_r',
   'miles_walk_l1', 'miles_walk_l2', 'miles_walk_l3',
+  'miles_walk_l4', 'miles_walk_l5', 'miles_walk_l6', 'miles_idle_l',
 ];
-// Pendulum pattern: 1→2→3→2→1→... maps to indices 0,1,2,1,0,1,...
-const WALK_SEQUENCE = [0, 1, 2, 1];
+const FRAMES_PER_DIR = 7;
+const WALK_CYCLE_LEN = 6;
+const IDLE_FRAME     = 6;
 
 // Miles — punch/kick close combat, soccer ball boomerang, nuclear super mode.
 export class Miles extends Character {
@@ -124,11 +128,11 @@ export class Miles extends Character {
     const sy2        = baseScale * depthScale * this.sprite.scaleY;
     const alpha      = this.sprite.alpha;
 
-    // Pendulum walk: 1→2→3→2→1→... idle holds legs-together frame (index 2)
+    // 6-frame cycle while walking; idle holds the legs-together frame
     const frameNum = (this.state === 'walk')
-      ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
-      : 2;
-    const dirOff   = this.facing === 'right' ? 0 : 3; // r: 0-2, l: 3-5
+      ? Math.floor(Date.now() / WALK_FRAME_MS) % WALK_CYCLE_LEN
+      : IDLE_FRAME;
+    const dirOff   = this.facing === 'right' ? 0 : FRAMES_PER_DIR;
     const frameIdx = dirOff + frameNum;
 
     // Show only the active frame; hide the rest (no texture swap = no white flash)
