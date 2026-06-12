@@ -127,9 +127,11 @@ export class Miles extends Character {
     // Depth scale: larger near bottom of screen (closer), smaller near top (farther)
     const depthT     = Math.max(0, Math.min(1, (this.groundY - FLOOR_TOP) / (FLOOR_BOTTOM - FLOOR_TOP)));
     const depthScale = DEPTH_SCALE_MIN + depthT * (DEPTH_SCALE_MAX - DEPTH_SCALE_MIN);
+    // Note: deliberately NOT inheriting this.sprite's scale — the placeholder
+    // attack pulse (grow/shrink) looks wrong on real sprite art
     const baseScale  = BASE_SPRITE_H / this.walkFrames[0].height;
-    const sx         = baseScale * depthScale * this.sprite.scaleX;
-    const sy2        = baseScale * depthScale * this.sprite.scaleY;
+    const sx         = baseScale * depthScale;
+    const sy2        = baseScale * depthScale;
     const alpha      = this.sprite.alpha;
 
     // Airborne shows the jump tuck; 4-beat cycle while walking; idle otherwise
