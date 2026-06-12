@@ -35,12 +35,14 @@ export class Miles extends Character {
     this._hasSprites = WALK_SPRITE_KEYS.every(k => this.scene.textures.exists(k));
     if (!this._hasSprites) return;
 
-    this.walkSprite = this.scene.add.image(this.worldX, this.groundY, 'miles_walk_r1')
-      .setOrigin(0.5, 1);
-
-    // Scale so the sprite height matches the character config height
-    const scale = this.config.height / this.walkSprite.height;
-    this.walkSprite.setScale(scale);
+    // One image per frame — toggle visibility instead of swapping textures (avoids white flash)
+    this.walkFrames = WALK_SPRITE_KEYS.map(key =>
+      this.scene.add.image(this.worldX, this.groundY, key)
+        .setOrigin(0.5, 1)
+        .setVisible(false)
+    );
+    this.walkSprite = this.walkFrames[0]; // alias used by _setVisible / _flashTint
+    this._activeFrameIdx = -1;
   }
 
   // ── Attack / combat ───────────────────────────────────────────────
@@ -128,44 +130,46 @@ export class Miles extends Character {
     this.eyeL.setVisible(false);
     this.eyeR.setVisible(false);
 
-    // Position — bottom-anchored at feet
-    this.walkSprite.x = this.worldX;
-    this.walkSprite.y = sy;
-    this.walkSprite.setDepth(this.groundY);
-
-    // Mirror alpha (KO blink + invuln flicker + super glow all live on this.sprite.alpha)
-    this.walkSprite.setAlpha(this.sprite.alpha);
-
     // Depth scale: larger near bottom of screen (closer), smaller near top (farther)
     const depthT     = Math.max(0, Math.min(1, (this.groundY - FLOOR_TOP) / (FLOOR_BOTTOM - FLOOR_TOP)));
     const depthScale = DEPTH_SCALE_MIN + depthT * (DEPTH_SCALE_MAX - DEPTH_SCALE_MIN);
-    const baseScale  = BASE_SPRITE_H / this.walkSprite.height;
-    this.walkSprite.setScale(
-      baseScale * depthScale * this.sprite.scaleX,
-      baseScale * depthScale * this.sprite.scaleY
-    );
+    const baseScale  = BASE_SPRITE_H / this.walkFrames[0].height;
+    const sx         = baseScale * depthScale * this.sprite.scaleX;
+    const sy2        = baseScale * depthScale * this.sprite.scaleY;
+    const alpha      = this.sprite.alpha;
 
     // Pendulum walk: 1→2→3→2→1→... idle holds frame 1
-    const seqIdx = (this.state === 'walk')
+    const seqIdx   = (this.state === 'walk')
       ? Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length
       : 0;
-    const frameNum = WALK_SEQUENCE[seqIdx] + 1;
-    const dir = this.facing === 'right' ? 'r' : 'l';
-    const key = `miles_walk_${dir}${frameNum}`;
-    if (this.walkSprite.texture.key !== key) this.walkSprite.setTexture(key);
+    const frameNum = WALK_SEQUENCE[seqIdx]; // 0-based index into direction's 3 frames
+    const dirOff   = this.facing === 'right' ? 0 : 3; // r: 0-2, l: 3-5
+    const frameIdx = dirOff + frameNum;
+
+    // Show only the active frame; hide the rest (no texture swap = no white flash)
+    if (frameIdx !== this._activeFrameIdx) {
+      if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
+      this._activeFrameIdx = frameIdx;
+    }
+    const frame = this.walkFrames[frameIdx];
+    frame.setVisible(true).setPosition(this.worldX, sy).setDepth(this.groundY)
+      .setScale(sx, sy2).setAlpha(alpha);
   }
 
   _setVisible(v) {
     super._setVisible(v);
-    this.walkSprite?.setVisible(v);
+    if (this.walkFrames) {
+      // Only show the active frame; hide all others
+      this.walkFrames.forEach((f, i) => f.setVisible(v && i === this._activeFrameIdx));
+    }
   }
 
   _flashTint(color, duration) {
     super._flashTint(color, duration);
-    if (this._hasSprites && this.walkSprite) {
-      this.walkSprite.setTint(color);
+    if (this._hasSprites && this.walkFrames) {
+      this.walkFrames.forEach(f => f.setTint(color));
       this.scene.time.delayedCall(200, () => {
-        if (this.active && this.walkSprite?.active) this.walkSprite.clearTint();
+        if (this.active) this.walkFrames.forEach(f => f.clearTint());
       });
     }
   }
@@ -204,6 +208,6 @@ export class Miles extends Character {
     super.destroy();
     this.nuclearBg.destroy();
     this.nuclearBar.destroy();
-    this.walkSprite?.destroy();
+    this.walkFrames?.forEach(f => f.destroy());
   }
 }
