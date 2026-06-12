@@ -26,8 +26,11 @@ export class Projectile {
 
     const hasTexture = textureKey && scene.textures.exists(textureKey);
     if (hasTexture) {
+      const tex = scene.textures.get(textureKey).getSourceImage();
+      const dispH = kind === 'soccer' ? 50 : 24;
+      const dispW = Math.round(tex.width / tex.height * dispH);
       this.sprite = scene.add.image(worldX, groundY, textureKey)
-        .setDisplaySize(kind === 'soccer' ? 30 : 18, kind === 'soccer' ? 30 : 18);
+        .setDisplaySize(dispW, dispH);
     } else {
       this.sprite = scene.add.circle(
         worldX, groundY,
