@@ -2,13 +2,13 @@ import Phaser from 'phaser';
 
 // Keyboard bindings per player slot
 const KB_BINDINGS = [
-  // Player 1: Arrow keys + Z/X/C/Enter
+  // Player 1: Arrow keys + Space/X/C/Enter
   {
     left:   Phaser.Input.Keyboard.KeyCodes.LEFT,
     right:  Phaser.Input.Keyboard.KeyCodes.RIGHT,
     up:     Phaser.Input.Keyboard.KeyCodes.UP,
     down:   Phaser.Input.Keyboard.KeyCodes.DOWN,
-    jump:   Phaser.Input.Keyboard.KeyCodes.Z,
+    jump:   Phaser.Input.Keyboard.KeyCodes.SPACE,
     attack: Phaser.Input.Keyboard.KeyCodes.X,
     hug:    Phaser.Input.Keyboard.KeyCodes.C,
     start:  Phaser.Input.Keyboard.KeyCodes.ENTER,

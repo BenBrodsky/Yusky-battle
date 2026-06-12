@@ -24,7 +24,7 @@ export class TitleScene extends Phaser.Scene {
     // Dark strip at the very bottom for the controls hint
     this.add.rectangle(W / 2, H - 14, W, 28, 0x000000, 0.6);
     this.add.text(W / 2, H - 14,
-      'Gamepad: A=Jump  X=Attack  Y=Hug  |  Keyboard: Z=Jump  X=Attack  C=Hug',
+      'Gamepad: A=Jump  X=Attack  Y=Hug  |  Keyboard: Space=Jump  X=Attack  C=Hug',
       { fontSize: '13px', fill: '#cccccc' }
     ).setOrigin(0.5);
 
