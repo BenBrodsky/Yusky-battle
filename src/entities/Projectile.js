@@ -164,7 +164,8 @@ export class Projectile {
     if (this.kind === 'soccer' && this.velX !== 0) {
       // Fast spin the whole time it's moving (floor keeps it lively as it
       // slows); only a stopped ball stops spinning
-      const rate = Math.max(0.16, 1.0 * Math.abs(this.velX) / 540);
+      // 0.45 is about the max before the pattern strobes (wagon-wheel effect)
+      const rate = Math.max(0.16, 0.45 * Math.abs(this.velX) / 540);
       this.sprite.rotation += Math.sign(this.velX) * rate;
     }
   }
