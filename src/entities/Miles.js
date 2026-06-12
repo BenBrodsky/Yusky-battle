@@ -2,6 +2,9 @@ import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
 import { MELEE_RANGE } from '../config/constants.js';
 
+const WALK_FRAME_MS  = 180; // ms per walk animation frame
+const WALK_SPRITE_KEYS = ['miles_walk_r1', 'miles_walk_r2', 'miles_walk_l1', 'miles_walk_l2'];
+
 // Miles — punch/kick close combat, soccer ball boomerang, nuclear super mode.
 export class Miles extends Character {
   constructor(scene, worldX, groundY, config, playerIndex) {
@@ -15,7 +18,24 @@ export class Miles extends Character {
     // Nuclear meter bar (shown above head)
     this.nuclearBg  = this.scene.add.rectangle(0, 0, config.width, 5, 0x004400);
     this.nuclearBar = this.scene.add.rectangle(0, 0, 0, 5, 0x00ff44);
+
+    // Walk sprite — overlays the placeholder rectangle when textures are loaded
+    this._initWalkSprite();
   }
+
+  _initWalkSprite() {
+    this._hasSprites = WALK_SPRITE_KEYS.every(k => this.scene.textures.exists(k));
+    if (!this._hasSprites) return;
+
+    this.walkSprite = this.scene.add.image(this.worldX, this.groundY, 'miles_walk_r1')
+      .setOrigin(0.5, 1);
+
+    // Scale so the sprite height matches the character config height
+    const scale = this.config.height / this.walkSprite.height;
+    this.walkSprite.setScale(scale);
+  }
+
+  // ── Attack / combat ───────────────────────────────────────────────
 
   onAttack(gameScene) {
     if (!gameScene) return;
@@ -55,13 +75,9 @@ export class Miles extends Character {
     this.nuclear     = 1;
     this._flashTint(0x00ff44, 0.4);
     this._popup('NUCLEAR!!!', 0x00ff44);
-    // Glow tint
-    this.scene.tweens.add({
-      targets: this.sprite,
-      fillColor: { from: 0x00ff44, to: this.config.color },
-      duration: 400, ease: 'Sine.easeInOut',
-    });
   }
+
+  // ── Update ────────────────────────────────────────────────────────
 
   update(dt, input, gameScene) {
     if (this.superActive) {
@@ -74,12 +90,15 @@ export class Miles extends Character {
     super.update(dt, input, gameScene);
   }
 
+  // ── Sprites ───────────────────────────────────────────────────────
+
   _syncSprites() {
     super._syncSprites();
+
+    // Nuclear bar
     const sy = this.groundY - this.jumpZ;
     const bx = this.worldX;
     const by = sy - this.config.height - 22;
-
     this.nuclearBg.x  = bx;
     this.nuclearBg.y  = by;
     this.nuclearBar.width = this.config.width * this.nuclear;
@@ -88,11 +107,56 @@ export class Miles extends Character {
     this.nuclearBg.setDepth(this.groundY + 2);
     this.nuclearBar.setDepth(this.groundY + 2);
 
+    // Super glow on placeholder sprite (also mirrors to walkSprite via alpha below)
     if (this.superActive) {
       const glow = 0.7 + Math.sin(Date.now() / 120) * 0.3;
       this.sprite.setAlpha(glow);
     }
+
+    if (!this._hasSprites) return;
+
+    // Hide placeholder rectangle and eyes; walkSprite takes over visually
+    this.sprite.setVisible(false);
+    this.eyeL.setVisible(false);
+    this.eyeR.setVisible(false);
+
+    // Position — bottom-anchored at feet
+    this.walkSprite.x = this.worldX;
+    this.walkSprite.y = sy;
+    this.walkSprite.setDepth(this.groundY);
+
+    // Mirror alpha (KO blink + invuln flicker + super glow all live on this.sprite.alpha)
+    this.walkSprite.setAlpha(this.sprite.alpha);
+
+    // Mirror attack-pulse scale on top of the base fit-to-height scale
+    const baseScale = this.config.height / this.walkSprite.height;
+    this.walkSprite.setScale(baseScale * this.sprite.scaleX, baseScale * this.sprite.scaleY);
+
+    // Choose frame: walking alternates every WALK_FRAME_MS, idle/other holds frame 1
+    const frameIdx = (this.state === 'walk')
+      ? Math.floor(Date.now() / WALK_FRAME_MS) % 2
+      : 0;
+    const dir = this.facing === 'right' ? 'r' : 'l';
+    const key = `miles_walk_${dir}${frameIdx + 1}`;
+    if (this.walkSprite.texture.key !== key) this.walkSprite.setTexture(key);
   }
+
+  _setVisible(v) {
+    super._setVisible(v);
+    this.walkSprite?.setVisible(v);
+  }
+
+  _flashTint(color, duration) {
+    super._flashTint(color, duration);
+    if (this._hasSprites && this.walkSprite) {
+      this.walkSprite.setTint(color);
+      this.scene.time.delayedCall(200, () => {
+        if (this.active && this.walkSprite?.active) this.walkSprite.clearTint();
+      });
+    }
+  }
+
+  // ── Helpers ───────────────────────────────────────────────────────
 
   _findNearestEnemy(enemies) {
     let best = null, bestDist = Infinity;
@@ -126,5 +190,6 @@ export class Miles extends Character {
     super.destroy();
     this.nuclearBg.destroy();
     this.nuclearBar.destroy();
+    this.walkSprite?.destroy();
   }
 }
