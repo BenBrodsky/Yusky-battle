@@ -2,7 +2,7 @@ import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
 import { MELEE_RANGE, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
-const WALK_FRAME_MS    = 110;
+const WALK_FRAME_MS    = 130;
 const BASE_SPRITE_H    = 160; // display height at mid-floor (scales with depth)
 const DEPTH_SCALE_MIN  = 0.6; // scale at FLOOR_TOP (far away)
 const DEPTH_SCALE_MAX  = 1.3; // scale at FLOOR_BOTTOM (close up)
@@ -14,8 +14,11 @@ const WALK_SPRITE_KEYS = [
   'miles_walk_l4', 'miles_walk_l5', 'miles_walk_l6', 'miles_idle_l',
 ];
 const FRAMES_PER_DIR = 7;
-const WALK_CYCLE_LEN = 6;
 const IDLE_FRAME     = 6;
+// Classic 4-beat walk: stride-A, feet pass, stride-B, feet pass.
+// Frames 3 (near-duplicate of 4) and 6 (knee-up fist pump) are skipped —
+// they broke the gait rhythm.
+const WALK_SEQUENCE  = [0, 1, 3, 4];
 
 // Miles — punch/kick close combat, soccer ball boomerang, nuclear super mode.
 export class Miles extends Character {
@@ -128,9 +131,9 @@ export class Miles extends Character {
     const sy2        = baseScale * depthScale * this.sprite.scaleY;
     const alpha      = this.sprite.alpha;
 
-    // 6-frame cycle while walking; idle holds the legs-together frame
+    // 4-beat cycle while walking; idle holds the legs-together frame
     const frameNum = (this.state === 'walk')
-      ? Math.floor(Date.now() / WALK_FRAME_MS) % WALK_CYCLE_LEN
+      ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
       : IDLE_FRAME;
     const dirOff   = this.facing === 'right' ? 0 : FRAMES_PER_DIR;
     const frameIdx = dirOff + frameNum;
