@@ -1,8 +1,11 @@
 import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
-import { MELEE_RANGE } from '../config/constants.js';
+import { MELEE_RANGE, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
-const WALK_FRAME_MS  = 160; // ms per walk animation frame
+const WALK_FRAME_MS    = 160;
+const BASE_SPRITE_H    = 160; // display height at mid-floor (scales with depth)
+const DEPTH_SCALE_MIN  = 0.6; // scale at FLOOR_TOP (far away)
+const DEPTH_SCALE_MAX  = 1.3; // scale at FLOOR_BOTTOM (close up)
 const WALK_SPRITE_KEYS = [
   'miles_walk_r1', 'miles_walk_r2', 'miles_walk_r3',
   'miles_walk_l1', 'miles_walk_l2', 'miles_walk_l3',
@@ -133,9 +136,14 @@ export class Miles extends Character {
     // Mirror alpha (KO blink + invuln flicker + super glow all live on this.sprite.alpha)
     this.walkSprite.setAlpha(this.sprite.alpha);
 
-    // Mirror attack-pulse scale on top of the base fit-to-height scale
-    const baseScale = this.config.height / this.walkSprite.height;
-    this.walkSprite.setScale(baseScale * this.sprite.scaleX, baseScale * this.sprite.scaleY);
+    // Depth scale: larger near bottom of screen (closer), smaller near top (farther)
+    const depthT     = Math.max(0, Math.min(1, (this.groundY - FLOOR_TOP) / (FLOOR_BOTTOM - FLOOR_TOP)));
+    const depthScale = DEPTH_SCALE_MIN + depthT * (DEPTH_SCALE_MAX - DEPTH_SCALE_MIN);
+    const baseScale  = BASE_SPRITE_H / this.walkSprite.height;
+    this.walkSprite.setScale(
+      baseScale * depthScale * this.sprite.scaleX,
+      baseScale * depthScale * this.sprite.scaleY
+    );
 
     // Pendulum walk: 1→2→3→2→1→... idle holds frame 1
     const seqIdx = (this.state === 'walk')
