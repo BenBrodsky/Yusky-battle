@@ -163,7 +163,7 @@ export class Projectile {
 
     if (this.kind === 'soccer') {
       // Spin tracks roll speed; a stopped ball doesn't spin
-      this.sprite.rotation += 0.12 * (this.velX / 540);
+      this.sprite.rotation += 0.25 * (this.velX / 540);
     }
   }
 }
