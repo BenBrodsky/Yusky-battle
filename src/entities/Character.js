@@ -75,9 +75,6 @@ export class Character {
       { fontSize: '11px', fill: '#ffffff', stroke: '#000000', strokeThickness: 3 }
     ).setOrigin(0.5, 1);
 
-    // Health bar background
-    this.hpBarBg = scene.add.rectangle(this.worldX, this.groundY - config.height - 16, config.width, 6, 0x440000);
-    this.hpBar   = scene.add.rectangle(this.worldX, this.groundY - config.height - 16, config.width, 6, 0xff2200);
   }
 
   _createKOStars() {
@@ -342,17 +339,6 @@ export class Character {
     this.nameLabel.y = sy - this.config.height - 4;
     this.nameLabel.setDepth(this.groundY + 2);
 
-    // HP bar
-    const hpFrac = this.hp / this.maxHP;
-    const barW   = this.config.width * hpFrac;
-    this.hpBar.width   = Math.max(0, barW);
-    this.hpBar.x       = this.worldX - (this.config.width - barW) / 2;
-    this.hpBarBg.x     = this.worldX;
-    this.hpBar.y       = sy - this.config.height - 14;
-    this.hpBarBg.y     = sy - this.config.height - 14;
-    this.hpBar.setDepth(this.groundY + 2);
-    this.hpBarBg.setDepth(this.groundY + 2);
-
     // Walking bob
     if (this.state === 'walk') {
       const bob = Math.sin(Date.now() / 100) * 2;
@@ -381,8 +367,6 @@ export class Character {
     this.eyeL.setVisible(v);
     this.eyeR.setVisible(v);
     this.nameLabel.setVisible(v);
-    this.hpBar.setVisible(v);
-    this.hpBarBg.setVisible(v);
     this.shadow.setVisible(v);
   }
 
@@ -392,8 +376,6 @@ export class Character {
     this.eyeL.destroy();
     this.eyeR.destroy();
     this.nameLabel.destroy();
-    this.hpBar.destroy();
-    this.hpBarBg.destroy();
     this.koStars.forEach(s => s.destroy());
   }
 }
