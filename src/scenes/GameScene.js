@@ -33,6 +33,8 @@ export class GameScene extends Phaser.Scene {
     }
     this.load.image('miles_idle_r', 'miles-idle-r.png');
     this.load.image('miles_idle_l', 'miles-idle-l.png');
+    this.load.image('miles_jump_r', 'miles-jump-r.png');
+    this.load.image('miles_jump_l', 'miles-jump-l.png');
     this.load.image('soccer_ball',   'soccer-ball.png');
   }
 

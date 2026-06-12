@@ -6,15 +6,16 @@ const WALK_FRAME_MS    = 130;
 const BASE_SPRITE_H    = 160; // display height at mid-floor (scales with depth)
 const DEPTH_SCALE_MIN  = 0.6; // scale at FLOOR_TOP (far away)
 const DEPTH_SCALE_MAX  = 1.3; // scale at FLOOR_BOTTOM (close up)
-// 6-frame walk cycle per direction, plus idle (legs together) at index 6
+// 6-frame walk cycle per direction, plus idle (legs together) and jump
 const WALK_SPRITE_KEYS = [
-  'miles_walk_r1', 'miles_walk_r2', 'miles_walk_r3',
-  'miles_walk_r4', 'miles_walk_r5', 'miles_walk_r6', 'miles_idle_r',
-  'miles_walk_l1', 'miles_walk_l2', 'miles_walk_l3',
-  'miles_walk_l4', 'miles_walk_l5', 'miles_walk_l6', 'miles_idle_l',
+  'miles_walk_r1', 'miles_walk_r2', 'miles_walk_r3', 'miles_walk_r4',
+  'miles_walk_r5', 'miles_walk_r6', 'miles_idle_r',  'miles_jump_r',
+  'miles_walk_l1', 'miles_walk_l2', 'miles_walk_l3', 'miles_walk_l4',
+  'miles_walk_l5', 'miles_walk_l6', 'miles_idle_l',  'miles_jump_l',
 ];
-const FRAMES_PER_DIR = 7;
+const FRAMES_PER_DIR = 8;
 const IDLE_FRAME     = 6;
+const JUMP_FRAME     = 7;
 // Classic 4-beat walk: stride-A, feet pass, stride-B, feet pass.
 // Frames 3 (near-duplicate of 4) and 6 (knee-up fist pump) are skipped —
 // they broke the gait rhythm.
@@ -131,10 +132,12 @@ export class Miles extends Character {
     const sy2        = baseScale * depthScale * this.sprite.scaleY;
     const alpha      = this.sprite.alpha;
 
-    // 4-beat cycle while walking; idle holds the legs-together frame
-    const frameNum = (this.state === 'walk')
-      ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
-      : IDLE_FRAME;
+    // Airborne shows the jump tuck; 4-beat cycle while walking; idle otherwise
+    const frameNum = !this.isGrounded()
+      ? JUMP_FRAME
+      : (this.state === 'walk')
+        ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
+        : IDLE_FRAME;
     const dirOff   = this.facing === 'right' ? 0 : FRAMES_PER_DIR;
     const frameIdx = dirOff + frameNum;
 
