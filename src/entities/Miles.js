@@ -2,8 +2,13 @@ import { Character } from './Character.js';
 import { Projectile } from './Projectile.js';
 import { MELEE_RANGE } from '../config/constants.js';
 
-const WALK_FRAME_MS  = 180; // ms per walk animation frame
-const WALK_SPRITE_KEYS = ['miles_walk_r1', 'miles_walk_r2', 'miles_walk_l1', 'miles_walk_l2'];
+const WALK_FRAME_MS  = 160; // ms per walk animation frame
+const WALK_SPRITE_KEYS = [
+  'miles_walk_r1', 'miles_walk_r2', 'miles_walk_r3',
+  'miles_walk_l1', 'miles_walk_l2', 'miles_walk_l3',
+];
+// Pendulum pattern: 1→2→3→2→1→... maps to indices 0,1,2,1,0,1,...
+const WALK_SEQUENCE = [0, 1, 2, 1];
 
 // Miles — punch/kick close combat, soccer ball boomerang, nuclear super mode.
 export class Miles extends Character {
@@ -132,12 +137,13 @@ export class Miles extends Character {
     const baseScale = this.config.height / this.walkSprite.height;
     this.walkSprite.setScale(baseScale * this.sprite.scaleX, baseScale * this.sprite.scaleY);
 
-    // Choose frame: walking alternates every WALK_FRAME_MS, idle/other holds frame 1
-    const frameIdx = (this.state === 'walk')
-      ? Math.floor(Date.now() / WALK_FRAME_MS) % 2
+    // Pendulum walk: 1→2→3→2→1→... idle holds frame 1
+    const seqIdx = (this.state === 'walk')
+      ? Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length
       : 0;
+    const frameNum = WALK_SEQUENCE[seqIdx] + 1;
     const dir = this.facing === 'right' ? 'r' : 'l';
-    const key = `miles_walk_${dir}${frameIdx + 1}`;
+    const key = `miles_walk_${dir}${frameNum}`;
     if (this.walkSprite.texture.key !== key) this.walkSprite.setTexture(key);
   }
 
