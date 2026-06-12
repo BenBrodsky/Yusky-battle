@@ -83,15 +83,25 @@ export class Projectile {
     }
   }
 
+  // Same size factor the sprite uses: balls near the bottom of the screen
+  // are "closer", so they must also travel proportionally faster on screen
+  _depthScale() {
+    const t = Math.max(0, Math.min(1, (this.groundY - FLOOR_TOP) / (FLOOR_BOTTOM - FLOOR_TOP)));
+    return DEPTH_SCALE_MIN + t * (DEPTH_SCALE_MAX - DEPTH_SCALE_MIN);
+  }
+
   _updateSoccer(dt, gameScene) {
+    const depth = this._depthScale();
+
     if (this.returning) {
       // Home in on Miles' current position (both axes) until it reaches him
       const dx   = this.owner.worldX  - this.worldX;
       const dy   = this.owner.groundY - this.groundY;
       const dist = Math.hypot(dx, dy);
       if (dist < PICKUP_RADIUS) { this._return(); return; }
-      this.worldX  += (dx / dist) * SOCCER_RETURN_SPEED * dt;
-      this.groundY += (dy / dist) * SOCCER_RETURN_SPEED * dt;
+      const sp = SOCCER_RETURN_SPEED * depth;
+      this.worldX  += (dx / dist) * sp * dt;
+      this.groundY += (dy / dist) * sp * dt;
       this.velX = Math.sign(dx) * SOCCER_RETURN_SPEED; // drives spin direction
       return;
     }
@@ -105,7 +115,7 @@ export class Projectile {
     }
 
     // Rolling: friction bleeds speed until the ball stops
-    this.worldX += this.velX * dt;
+    this.worldX += this.velX * depth * dt;
     const speed = Math.max(0, Math.abs(this.velX) - SOCCER_FRICTION * dt);
     this.velX   = Math.sign(this.velX) * speed;
 
