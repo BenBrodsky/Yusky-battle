@@ -98,9 +98,10 @@ export class GameScene extends Phaser.Scene {
     this.activeGateEntry = null;
 
     // ---- Listen for events ----
-    this.events.on('enemyDefeated', this._onEnemyDefeated, this);
-    this.events.on('playerKO',      this._onPlayerKO,      this);
-    this.events.on('bossDefeated',  this._onBossDefeated,  this);
+    this.events.on('enemyDefeated',   this._onEnemyDefeated,   this);
+    this.events.on('playerKO',        this._onPlayerKO,        this);
+    this.events.on('playerDespawned', this._onPlayerDespawned, this);
+    this.events.on('bossDefeated',    this._onBossDefeated,    this);
 
     // ---- Launch HUD overlay ----
     if (!this.scene.isActive('HUD')) this.scene.launch('HUD');
@@ -468,10 +469,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   _onPlayerKO(playerIndex) {
-    // Check all KO'd
-    const anyActive = this.players.some(p => p?.active && !p.isKO);
-    if (!anyActive) {
-      this.time.delayedCall(3200, () => this._gameOver());
+    // Game over is now deferred to _onPlayerDespawned (fires only when lives run out)
+  }
+
+  _onPlayerDespawned(playerIndex) {
+    const anyLeft = this.players.some(p => p?.active);
+    if (!anyLeft) {
+      this.time.delayedCall(1500, () => this._gameOver());
     }
   }
 

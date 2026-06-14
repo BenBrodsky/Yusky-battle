@@ -23,6 +23,7 @@ export class Character {
     // Stats
     this.maxHP = config.maxHP;
     this.hp    = config.maxHP;
+    this.lives = 3;
 
     // State
     this.state         = 'idle';
@@ -294,10 +295,30 @@ export class Character {
   }
 
   _despawnKO() {
-    this.active = false;
-    this._setVisible(false);
     this.koStars.forEach(s => s.setVisible(false));
-    this.scene.events.emit('playerDespawned', this.playerIndex);
+    if (this.lives > 0) {
+      this.lives--;
+      this._respawn();
+    } else {
+      this.active = false;
+      this._setVisible(false);
+      this.scene.events.emit('playerDespawned', this.playerIndex);
+    }
+  }
+
+  _respawn() {
+    this.hp           = this.maxHP;
+    this.isKO         = false;
+    this.state        = 'idle';
+    this.velX         = 0;
+    this.velY         = 0;
+    this.velZ         = 0;
+    this.jumpZ        = 0;
+    this.invulnTimer  = 3.0;
+    this.hitThisSwing = false;
+    this._setVisible(true);
+    this._flashTint(0x44aaff, 0.5);
+    this.scene.events.emit('playerRespawned', this.playerIndex, this.lives);
   }
 
   _flashTint(color, _duration) {
