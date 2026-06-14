@@ -36,6 +36,10 @@ const ATTACK_SPRITE_KEYS = [
   'ocean_attack_l4', 'ocean_attack_l5', 'ocean_attack_l6',
 ];
 const N_ATTACK_FRAMES = 6;
+// The attack art was normalized with the body filling less of the shared
+// canvas than the walk frames (~886px tall vs ~933-957px), so at the same
+// scale Ocean looks slightly smaller mid-swing. Bump attack frames to match.
+const ATTACK_SCALE_FIX = 1.06;
 
 export class Ocean extends Character {
   constructor(scene, worldX, groundY, config, playerIndex) {
@@ -330,8 +334,9 @@ export class Ocean extends Character {
           if (this._activeAttackIdx >= 0) this.attackFrames[this._activeAttackIdx].setVisible(false);
           this._activeAttackIdx = attackIdx;
         }
+        const asx = sx * ATTACK_SCALE_FIX;
         this.attackFrames[attackIdx].setVisible(true).setPosition(this.worldX, sy)
-          .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
+          .setDepth(this.groundY).setScale(asx, asx).setAlpha(alpha);
       } else {
         // Hide attack frame
         if (this._activeAttackIdx >= 0) this.attackFrames?.[this._activeAttackIdx].setVisible(false);
