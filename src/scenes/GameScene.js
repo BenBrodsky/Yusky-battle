@@ -36,6 +36,15 @@ export class GameScene extends Phaser.Scene {
     this.load.image('miles_jump_r', 'miles/miles-jump-r.png');
     this.load.image('miles_jump_l', 'miles/miles-jump-l.png');
     this.load.image('soccer_ball',  'miles/soccer-ball.png');
+    // Ben 8-frame walk cycle + idle + jump, per direction
+    for (let i = 1; i <= 8; i++) {
+      this.load.image(`ben_walk_r${i}`, `ben/ben-walk-r${i}.png`);
+      this.load.image(`ben_walk_l${i}`, `ben/ben-walk-l${i}.png`);
+    }
+    this.load.image('ben_idle_r', 'ben/ben-idle-r.png');
+    this.load.image('ben_idle_l', 'ben/ben-idle-l.png');
+    this.load.image('ben_jump_r', 'ben/ben-jump-r.png');
+    this.load.image('ben_jump_l', 'ben/ben-jump-l.png');
     // Ocean 6-frame walk cycle + idle + jump, per direction
     for (let i = 1; i <= 6; i++) {
       this.load.image(`ocean_walk_r${i}`, `ocean/ocean-walk-r${i}.png`);
