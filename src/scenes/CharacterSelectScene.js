@@ -13,7 +13,7 @@ export class CharacterSelectScene extends Phaser.Scene {
     this.load.audio('cursor_move',  'cursor-move.wav');
     this.load.audio('game_start',   'game-start.wav');
     CHAR_ORDER.forEach(key => {
-      this.load.image(`portrait_${key}`, `${key}-portrait.png`);
+      this.load.image(`portrait_${key}`, `${key}/${key}-portrait.png`);
     });
   }
 

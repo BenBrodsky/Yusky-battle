@@ -28,14 +28,14 @@ export class GameScene extends Phaser.Scene {
     this.load.audio('boss-music',   'boss-music.mp3');
     // Miles 6-frame walk cycle + idle, per direction
     for (let i = 1; i <= 6; i++) {
-      this.load.image(`miles_walk_r${i}`, `miles-walk-r${i}.png`);
-      this.load.image(`miles_walk_l${i}`, `miles-walk-l${i}.png`);
+      this.load.image(`miles_walk_r${i}`, `miles/miles-walk-r${i}.png`);
+      this.load.image(`miles_walk_l${i}`, `miles/miles-walk-l${i}.png`);
     }
-    this.load.image('miles_idle_r', 'miles-idle-r.png');
-    this.load.image('miles_idle_l', 'miles-idle-l.png');
-    this.load.image('miles_jump_r', 'miles-jump-r.png');
-    this.load.image('miles_jump_l', 'miles-jump-l.png');
-    this.load.image('soccer_ball',   'soccer-ball.png');
+    this.load.image('miles_idle_r', 'miles/miles-idle-r.png');
+    this.load.image('miles_idle_l', 'miles/miles-idle-l.png');
+    this.load.image('miles_jump_r', 'miles/miles-jump-r.png');
+    this.load.image('miles_jump_l', 'miles/miles-jump-l.png');
+    this.load.image('soccer_ball',  'miles/soccer-ball.png');
   }
 
   init(data) {
