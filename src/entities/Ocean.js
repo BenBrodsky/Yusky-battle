@@ -86,6 +86,12 @@ export class Ocean extends Character {
       );
       this._activeAttackIdx = -1;
     }
+
+    if (this.scene.textures.exists('ocean_sleep')) {
+      this.sleepSprite = this.scene.add.image(this.worldX, this.groundY, 'ocean_sleep')
+        .setOrigin(0.5, 1)
+        .setVisible(false);
+    }
   }
 
   // ── Attack overrides ──────────────────────────────────────────────
@@ -235,6 +241,22 @@ export class Ocean extends Character {
       const baseScale  = BASE_SPRITE_H / this.walkFrames[0].height;
       const sx         = baseScale * depthScale;
       const alpha      = this.sprite.alpha;
+
+      // ── Napping: show the sleeping sprite, hide everything else ────────
+      if (this.isNapping && this.sleepSprite) {
+        if (this._activeFrameIdx >= 0)  { this.walkFrames[this._activeFrameIdx].setVisible(false);   this._activeFrameIdx = -1; }
+        if (this._activeAttackIdx >= 0) { this.attackFrames?.[this._activeAttackIdx].setVisible(false); this._activeAttackIdx = -1; }
+        // Lying-down pose: scale by width so the lying length ≈ standing height
+        const sleepScale = (BASE_SPRITE_H / this.sleepSprite.width) * depthScale;
+        this.sleepSprite.setVisible(true)
+          .setPosition(this.worldX, this.groundY)
+          .setDepth(this.groundY)
+          .setScale(dir * sleepScale, sleepScale)
+          .setAlpha(alpha);
+        return;
+      } else if (this.sleepSprite) {
+        this.sleepSprite.setVisible(false);
+      }
 
       if (this.state === 'attack' && this._hasAttackSprites) {
         // Hide walk frame

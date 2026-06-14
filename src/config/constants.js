@@ -84,7 +84,7 @@ export const CHAR_CONFIGS = {
     maxEnergy:   100,
     energyDrain: 2.0,   // per second while moving
     attackDrain: 5,     // per attack (cheaper because it's fast)
-    napDuration: 10.0,  // seconds
+    napDuration: 5.0,   // seconds
     description: 'Stuffed-rabbit nunchucks. Fast double-hit.\nNaps when drained. Stomp downed enemies.',
   },
 };
