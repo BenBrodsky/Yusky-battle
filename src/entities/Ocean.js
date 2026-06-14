@@ -101,11 +101,12 @@ export class Ocean extends Character {
     if (this.state !== 'attack' || this.hitThisSwing) return null;
     const progress = 1 - (this.stateTimer / ATTACK_DURATION);
     if (progress < 0.2 || progress > 0.85) return null;
-    const dir = this.facing === 'right' ? 1 : -1;
+    const dir    = this.facing === 'right' ? 1 : -1;
+    const reach  = 50; // shorter than standard 85 — must get close
     return {
-      x:          this.worldX + dir * (this.config.width * 0.5 + ATTACK_REACH / 2),
+      x:          this.worldX + dir * (this.config.width * 0.5 + reach / 2),
       y:          this.groundY - this.config.height * 0.45,
-      w:          ATTACK_REACH,
+      w:          reach,
       h:          this.config.height * 0.7,
       knockbackX: dir,
     };
