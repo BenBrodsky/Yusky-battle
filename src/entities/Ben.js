@@ -20,6 +20,8 @@ const FRAMES_PER_DIR = 10; // 8 walk + idle + jump
 const IDLE_FRAME     = 8;
 const JUMP_FRAME     = 9;
 const JUMP_SCALE     = 0.72; // tucked jump pose renders smaller than standing height
+const DOWN_SCALE     = 1.0;  // knocked-down pose scale
+const DOWN_KEYS      = { right: 'ben_down_r', left: 'ben_down_l' };
 const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5, 6, 7];
 
 // Two alternating punches: lead jab and rear cross. 3 frames each, per direction.
@@ -69,6 +71,15 @@ export class Ben extends Character {
           .setVisible(false);
       });
       this._activeAttackKey = null;
+    }
+
+    this._hasDownSprite = this.scene.textures.exists(DOWN_KEYS.right) &&
+                          this.scene.textures.exists(DOWN_KEYS.left);
+    if (this._hasDownSprite) {
+      this.downFrames = {
+        right: this.scene.add.image(this.worldX, this.groundY, DOWN_KEYS.right).setOrigin(0.5, 1).setVisible(false),
+        left:  this.scene.add.image(this.worldX, this.groundY, DOWN_KEYS.left ).setOrigin(0.5, 1).setVisible(false),
+      };
     }
   }
 
@@ -148,6 +159,21 @@ export class Ben extends Character {
       this.gloveL.setVisible(false);
       this.gloveR.setVisible(false);
 
+      // ── Knocked down: show the down pose while KO'd (stars handled by base) ──
+      if (this.isKO && this._hasDownSprite) {
+        if (this._activeFrameIdx >= 0)  { this.walkFrames[this._activeFrameIdx].setVisible(false); this._activeFrameIdx = -1; }
+        if (this._activeAttackKey)      { this.attackFrames[this._activeAttackKey].setVisible(false); this._activeAttackKey = null; }
+        const down  = this.downFrames[this.facing];
+        const other = this.downFrames[this.facing === 'right' ? 'left' : 'right'];
+        other.setVisible(false);
+        down.setVisible(true).setPosition(this.worldX, this.groundY)
+          .setDepth(this.groundY).setScale(sx * DOWN_SCALE, sx * DOWN_SCALE).setAlpha(alpha);
+        return;
+      } else if (this._hasDownSprite) {
+        this.downFrames.right.setVisible(false);
+        this.downFrames.left.setVisible(false);
+      }
+
       // ── Attack: alternating jab / cross punch frames ──────────────────
       if (this.state === 'attack' && this._hasAttackSprites) {
         if (this._activeFrameIdx >= 0) { this.walkFrames[this._activeFrameIdx].setVisible(false); this._activeFrameIdx = -1; }
@@ -208,6 +234,10 @@ export class Ben extends Character {
     if (this.attackFrames) {
       Object.entries(this.attackFrames).forEach(([key, f]) => f.setVisible(v && key === this._activeAttackKey));
     }
+    if (this.downFrames) {
+      this.downFrames.right.setVisible(v && this.isKO && this.facing === 'right');
+      this.downFrames.left.setVisible(v && this.isKO && this.facing === 'left');
+    }
     this.gloveL?.setVisible(v && !this._hasSprites);
     this.gloveR?.setVisible(v && !this._hasSprites);
   }
@@ -215,7 +245,7 @@ export class Ben extends Character {
   _flashTint(color, duration) {
     super._flashTint(color, duration);
     if (this._hasSprites) {
-      const all = [...this.walkFrames, ...Object.values(this.attackFrames || {})];
+      const all = [...this.walkFrames, ...Object.values(this.attackFrames || {}), ...Object.values(this.downFrames || {})];
       all.forEach(f => f.setTint(color));
       this.scene.time.delayedCall(200, () => {
         if (this.active) all.forEach(f => f.clearTint());
@@ -250,5 +280,6 @@ export class Ben extends Character {
     this.gloveR.destroy();
     this.walkFrames?.forEach(f => f.destroy());
     if (this.attackFrames) Object.values(this.attackFrames).forEach(f => f.destroy());
+    if (this.downFrames) Object.values(this.downFrames).forEach(f => f.destroy());
   }
 }
