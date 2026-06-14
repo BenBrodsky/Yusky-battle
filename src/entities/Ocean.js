@@ -2,8 +2,8 @@ import Phaser from 'phaser';
 import { Character } from './Character.js';
 import { JUMP_VELOCITY, ATTACK_REACH, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
-const ATTACK_DURATION = 0.18;
-const CORD_LEN        = 26;
+const ATTACK_DURATION    = 0.48; // 6 frames × 80ms
+const CORD_LEN           = 26;
 
 const WALK_FRAME_MS   = 130;
 const BASE_SPRITE_H   = 160;
@@ -22,6 +22,14 @@ const FRAMES_PER_DIR = 8;
 const IDLE_FRAME     = 6;
 const JUMP_FRAME     = 7;
 const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5];
+
+const ATTACK_SPRITE_KEYS = [
+  'ocean_attack_r1', 'ocean_attack_r2', 'ocean_attack_r3',
+  'ocean_attack_r4', 'ocean_attack_r5', 'ocean_attack_r6',
+  'ocean_attack_l1', 'ocean_attack_l2', 'ocean_attack_l3',
+  'ocean_attack_l4', 'ocean_attack_l5', 'ocean_attack_l6',
+];
+const N_ATTACK_FRAMES = 6;
 
 export class Ocean extends Character {
   constructor(scene, worldX, groundY, config, playerIndex) {
@@ -68,6 +76,16 @@ export class Ocean extends Character {
     );
     this.walkSprite      = this.walkFrames[0];
     this._activeFrameIdx = -1;
+
+    this._hasAttackSprites = ATTACK_SPRITE_KEYS.every(k => this.scene.textures.exists(k));
+    if (this._hasAttackSprites) {
+      this.attackFrames = ATTACK_SPRITE_KEYS.map(key =>
+        this.scene.add.image(this.worldX, this.groundY, key)
+          .setOrigin(0.5, 1)
+          .setVisible(false)
+      );
+      this._activeAttackIdx = -1;
+    }
   }
 
   // ── Attack overrides ──────────────────────────────────────────────
@@ -93,10 +111,10 @@ export class Ocean extends Character {
       knockbackX: dir,
     };
 
-    // Outswing hit (first ~40% of swing)
-    if (elapsed >= 0.02 && elapsed < 0.09 && this.nunchuckPhase === 0) return hitbox;
-    // Backswing hit (second ~40%)
-    if (elapsed >= 0.10 && this.nunchuckPhase === 1) return hitbox;
+    // Outswing hit — bunny fully extended (frames 3-4, ~50–75% through)
+    if (elapsed >= 0.24 && elapsed < 0.36 && this.nunchuckPhase === 0) return hitbox;
+    // Backswing hit — follow-through return (frame 5+)
+    if (elapsed >= 0.38 && this.nunchuckPhase === 1) return hitbox;
     return null;
   }
 
@@ -207,7 +225,7 @@ export class Ocean extends Character {
     const sy  = this.groundY - this.jumpZ;
     const dir = this.facing === 'right' ? 1 : -1;
 
-    // ── Walk sprites ─────────────────────────────────────────────────
+    // ── Walk / attack sprites ─────────────────────────────────────────
     if (this._hasSprites) {
       this.sprite.setVisible(false);
       this.eyeL.setVisible(false);
@@ -224,21 +242,42 @@ export class Ocean extends Character {
       const sx         = baseScale * depthScale;
       const alpha      = this.sprite.alpha;
 
-      const frameNum = !this.isGrounded()
-        ? JUMP_FRAME
-        : (this.state === 'walk')
-          ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
-          : IDLE_FRAME;
-      const dirOff   = this.facing === 'right' ? 0 : FRAMES_PER_DIR;
-      const frameIdx = dirOff + frameNum;
-
-      if (frameIdx !== this._activeFrameIdx) {
+      if (this.state === 'attack' && this._hasAttackSprites) {
+        // Hide walk frame
         if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
-        this._activeFrameIdx = frameIdx;
+        this._activeFrameIdx = -1;
+
+        const progress  = Math.max(0, Math.min(0.999, 1 - this.stateTimer / ATTACK_DURATION));
+        const frameNum  = Math.floor(progress * N_ATTACK_FRAMES);
+        const dirOff    = this.facing === 'right' ? 0 : N_ATTACK_FRAMES;
+        const attackIdx = dirOff + frameNum;
+
+        if (attackIdx !== this._activeAttackIdx) {
+          if (this._activeAttackIdx >= 0) this.attackFrames[this._activeAttackIdx].setVisible(false);
+          this._activeAttackIdx = attackIdx;
+        }
+        this.attackFrames[attackIdx].setVisible(true).setPosition(this.worldX, sy)
+          .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
+      } else {
+        // Hide attack frame
+        if (this._activeAttackIdx >= 0) this.attackFrames?.[this._activeAttackIdx].setVisible(false);
+        this._activeAttackIdx = -1;
+
+        const frameNum = !this.isGrounded()
+          ? JUMP_FRAME
+          : (this.state === 'walk')
+            ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
+            : IDLE_FRAME;
+        const dirOff   = this.facing === 'right' ? 0 : FRAMES_PER_DIR;
+        const frameIdx = dirOff + frameNum;
+
+        if (frameIdx !== this._activeFrameIdx) {
+          if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
+          this._activeFrameIdx = frameIdx;
+        }
+        this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
+          .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
       }
-      const frame = this.walkFrames[frameIdx];
-      frame.setVisible(true).setPosition(this.worldX, sy).setDepth(this.groundY)
-        .setScale(sx, sx).setAlpha(alpha);
     }
 
     // ── Energy bar ───────────────────────────────────────────────────
@@ -325,14 +364,18 @@ export class Ocean extends Character {
     if (this.walkFrames) {
       this.walkFrames.forEach((f, i) => f.setVisible(v && i === this._activeFrameIdx));
     }
+    if (this.attackFrames) {
+      this.attackFrames.forEach((f, i) => f.setVisible(v && i === this._activeAttackIdx));
+    }
   }
 
   _flashTint(color, duration) {
     super._flashTint(color, duration);
-    if (this._hasSprites && this.walkFrames) {
-      this.walkFrames.forEach(f => f.setTint(color));
+    if (this._hasSprites) {
+      const all = [...(this.walkFrames || []), ...(this.attackFrames || [])];
+      all.forEach(f => f.setTint(color));
       this.scene.time.delayedCall(200, () => {
-        if (this.active) this.walkFrames.forEach(f => f.clearTint());
+        if (this.active) all.forEach(f => f.clearTint());
       });
     }
   }
@@ -348,5 +391,6 @@ export class Ocean extends Character {
     this.rabbitEye.destroy();
     this.rabbitCord.destroy();
     this.walkFrames?.forEach(f => f.destroy());
+    this.attackFrames?.forEach(f => f.destroy());
   }
 }
