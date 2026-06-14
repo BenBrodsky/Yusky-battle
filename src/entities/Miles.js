@@ -47,6 +47,15 @@ export class Miles extends Character {
     );
     this.walkSprite = this.walkFrames[0]; // alias used by _setVisible / _flashTint
     this._activeFrameIdx = -1;
+
+    this._hasDownSprite = this.scene.textures.exists('miles_down_r') &&
+                          this.scene.textures.exists('miles_down_l');
+    if (this._hasDownSprite) {
+      this.downFrames = {
+        right: this.scene.add.image(this.worldX, this.groundY, 'miles_down_r').setOrigin(0.5, 1).setVisible(false),
+        left:  this.scene.add.image(this.worldX, this.groundY, 'miles_down_l').setOrigin(0.5, 1).setVisible(false),
+      };
+    }
   }
 
   // ── Attack / combat ───────────────────────────────────────────────
@@ -134,6 +143,20 @@ export class Miles extends Character {
     const sy2        = baseScale * depthScale;
     const alpha      = this.sprite.alpha;
 
+    // ── Knocked down: show the down pose while KO'd (stars from base) ──
+    if (this.isKO && this._hasDownSprite) {
+      if (this._activeFrameIdx >= 0) { this.walkFrames[this._activeFrameIdx].setVisible(false); this._activeFrameIdx = -1; }
+      const down  = this.downFrames[this.facing];
+      const other = this.downFrames[this.facing === 'right' ? 'left' : 'right'];
+      other.setVisible(false);
+      down.setVisible(true).setPosition(this.worldX, this.groundY)
+        .setDepth(this.groundY).setScale(sx, sy2).setAlpha(alpha);
+      return;
+    } else if (this._hasDownSprite) {
+      this.downFrames.right.setVisible(false);
+      this.downFrames.left.setVisible(false);
+    }
+
     // Airborne shows the jump tuck; 4-beat cycle while walking; idle otherwise
     const frameNum = !this.isGrounded()
       ? JUMP_FRAME
@@ -159,14 +182,19 @@ export class Miles extends Character {
       // Only show the active frame; hide all others
       this.walkFrames.forEach((f, i) => f.setVisible(v && i === this._activeFrameIdx));
     }
+    if (this.downFrames) {
+      this.downFrames.right.setVisible(v && this.isKO && this.facing === 'right');
+      this.downFrames.left.setVisible(v && this.isKO && this.facing === 'left');
+    }
   }
 
   _flashTint(color, duration) {
     super._flashTint(color, duration);
     if (this._hasSprites && this.walkFrames) {
-      this.walkFrames.forEach(f => f.setTint(color));
+      const all = [...this.walkFrames, ...Object.values(this.downFrames || {})];
+      all.forEach(f => f.setTint(color));
       this.scene.time.delayedCall(200, () => {
-        if (this.active) this.walkFrames.forEach(f => f.clearTint());
+        if (this.active) all.forEach(f => f.clearTint());
       });
     }
   }
@@ -204,5 +232,6 @@ export class Miles extends Character {
   destroy() {
     super.destroy();
     this.walkFrames?.forEach(f => f.destroy());
+    if (this.downFrames) Object.values(this.downFrames).forEach(f => f.destroy());
   }
 }
