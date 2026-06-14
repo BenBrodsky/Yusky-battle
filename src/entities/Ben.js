@@ -2,7 +2,7 @@ import { Character } from './Character.js';
 import { FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
 const WALK_FRAME_MS   = 63;
-const BASE_SPRITE_H   = 160;
+const BASE_SPRITE_H   = 208; // ~30% bigger than Miles (160)
 const DEPTH_SCALE_MIN = 0.6;
 const DEPTH_SCALE_MAX = 1.3;
 
