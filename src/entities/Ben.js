@@ -109,6 +109,23 @@ export class Ben extends Character {
     return dmgs[this.comboStep] ?? 14;
   }
 
+  // Only land the hit while the fist is actually extended (the strike frame),
+  // not on the windup — keeps Ben honest about his close range.
+  getAttackHitbox() {
+    if (this.state !== 'attack' || this.hitThisSwing) return null;
+    const progress = 1 - this.stateTimer / ATTACK_DURATION;
+    if (progress < 0.28 || progress > 0.72) return null;
+    const dir   = this.facing === 'right' ? 1 : -1;
+    const reach = 68; // boxer's reach — must get in close
+    return {
+      x:          this.worldX + dir * (this.config.width * 0.5 + reach / 2),
+      y:          this.groundY - this.config.height * 0.5,
+      w:          reach,
+      h:          this.config.height * 0.65,
+      knockbackX: dir,
+    };
+  }
+
   _syncSprites() {
     super._syncSprites();
 
