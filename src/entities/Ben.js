@@ -21,11 +21,30 @@ const IDLE_FRAME     = 8;
 const JUMP_FRAME     = 9;
 const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5, 6, 7];
 
+// Two alternating punches: lead jab and rear cross. 3 frames each, per direction.
+const ATTACK_DURATION = 0.32; // matches Character._handleAttack
+const N_PUNCH         = 3;
+const PUNCH_KEYS = {
+  jab: {
+    right: ['ben_jab_r1', 'ben_jab_r2', 'ben_jab_r3'],
+    left:  ['ben_jab_l1', 'ben_jab_l2', 'ben_jab_l3'],
+  },
+  cross: {
+    right: ['ben_cross_r1', 'ben_cross_r2', 'ben_cross_r3'],
+    left:  ['ben_cross_l1', 'ben_cross_l2', 'ben_cross_l3'],
+  },
+};
+const ATTACK_SPRITE_KEYS = [
+  ...PUNCH_KEYS.jab.right, ...PUNCH_KEYS.jab.left,
+  ...PUNCH_KEYS.cross.right, ...PUNCH_KEYS.cross.left,
+];
+
 // Ben — boxer tank. Jab-jab-haymaker combo. Toss enemies as a finisher.
 export class Ben extends Character {
   constructor(scene, worldX, groundY, config, playerIndex) {
     super(scene, worldX, groundY, config, playerIndex);
     this.throwCooldown = 0;
+    this.punchType     = 'cross'; // flips to 'jab' on the first swing
     this._initWalkSprite();
   }
 
@@ -39,6 +58,17 @@ export class Ben extends Character {
         .setVisible(false)
     );
     this._activeFrameIdx = -1;
+
+    this._hasAttackSprites = ATTACK_SPRITE_KEYS.every(k => this.scene.textures.exists(k));
+    if (this._hasAttackSprites) {
+      this.attackFrames = {};
+      ATTACK_SPRITE_KEYS.forEach(key => {
+        this.attackFrames[key] = this.scene.add.image(this.worldX, this.groundY, key)
+          .setOrigin(0.5, 1)
+          .setVisible(false);
+      });
+      this._activeAttackKey = null;
+    }
   }
 
   _createSprites() {
@@ -53,6 +83,9 @@ export class Ben extends Character {
   }
 
   onAttack(gameScene) {
+    // Alternate hands each swing: jab ↔ cross
+    this.punchType = this.punchType === 'jab' ? 'cross' : 'jab';
+
     if (!gameScene) return;
     const closeEnemy = this._findCloseEnemy(gameScene.enemies, 55);
     if (closeEnemy && this.throwCooldown <= 0 && this.comboStep === 0) {
@@ -93,6 +126,30 @@ export class Ben extends Character {
       const sx         = baseScale * depthScale;
       const alpha      = this.sprite.alpha;
 
+      // Gloves hidden when real sprites are active
+      this.gloveL.setVisible(false);
+      this.gloveR.setVisible(false);
+
+      // ── Attack: alternating jab / cross punch frames ──────────────────
+      if (this.state === 'attack' && this._hasAttackSprites) {
+        if (this._activeFrameIdx >= 0) { this.walkFrames[this._activeFrameIdx].setVisible(false); this._activeFrameIdx = -1; }
+
+        const progress  = Math.max(0, Math.min(0.999, 1 - this.stateTimer / ATTACK_DURATION));
+        const frameNum  = Math.floor(progress * N_PUNCH);
+        const key       = PUNCH_KEYS[this.punchType][this.facing][frameNum];
+
+        if (key !== this._activeAttackKey) {
+          if (this._activeAttackKey) this.attackFrames[this._activeAttackKey].setVisible(false);
+          this._activeAttackKey = key;
+        }
+        this.attackFrames[key].setVisible(true).setPosition(this.worldX, sy)
+          .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
+        return;
+      } else if (this._activeAttackKey) {
+        this.attackFrames[this._activeAttackKey].setVisible(false);
+        this._activeAttackKey = null;
+      }
+
       const frameNum = !this.isGrounded()
         ? JUMP_FRAME
         : (this.state === 'walk')
@@ -107,10 +164,6 @@ export class Ben extends Character {
       }
       this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
         .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
-
-      // Gloves hidden when sprite active
-      this.gloveL.setVisible(false);
-      this.gloveR.setVisible(false);
     } else {
       // Placeholder gloves
       const gOffX = dir * (this.config.width * 0.5 + 4);
@@ -132,6 +185,9 @@ export class Ben extends Character {
     if (this.walkFrames) {
       this.walkFrames.forEach((f, i) => f.setVisible(v && i === this._activeFrameIdx));
     }
+    if (this.attackFrames) {
+      Object.entries(this.attackFrames).forEach(([key, f]) => f.setVisible(v && key === this._activeAttackKey));
+    }
     this.gloveL?.setVisible(v && !this._hasSprites);
     this.gloveR?.setVisible(v && !this._hasSprites);
   }
@@ -139,9 +195,10 @@ export class Ben extends Character {
   _flashTint(color, duration) {
     super._flashTint(color, duration);
     if (this._hasSprites) {
-      this.walkFrames.forEach(f => f.setTint(color));
+      const all = [...this.walkFrames, ...Object.values(this.attackFrames || {})];
+      all.forEach(f => f.setTint(color));
       this.scene.time.delayedCall(200, () => {
-        if (this.active) this.walkFrames.forEach(f => f.clearTint());
+        if (this.active) all.forEach(f => f.clearTint());
       });
     }
   }
@@ -172,5 +229,6 @@ export class Ben extends Character {
     this.gloveL.destroy();
     this.gloveR.destroy();
     this.walkFrames?.forEach(f => f.destroy());
+    if (this.attackFrames) Object.values(this.attackFrames).forEach(f => f.destroy());
   }
 }

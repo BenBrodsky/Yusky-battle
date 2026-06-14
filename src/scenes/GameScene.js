@@ -45,6 +45,13 @@ export class GameScene extends Phaser.Scene {
     this.load.image('ben_idle_l', 'ben/ben-idle-l.png');
     this.load.image('ben_jump_r', 'ben/ben-jump-r.png');
     this.load.image('ben_jump_l', 'ben/ben-jump-l.png');
+    // Ben punches: 3-frame jab + 3-frame cross, per direction
+    for (let i = 1; i <= 3; i++) {
+      this.load.image(`ben_jab_r${i}`,   `ben/ben-jab-r${i}.png`);
+      this.load.image(`ben_jab_l${i}`,   `ben/ben-jab-l${i}.png`);
+      this.load.image(`ben_cross_r${i}`, `ben/ben-cross-r${i}.png`);
+      this.load.image(`ben_cross_l${i}`, `ben/ben-cross-l${i}.png`);
+    }
     // Ocean 6-frame walk cycle + idle + jump, per direction
     for (let i = 1; i <= 6; i++) {
       this.load.image(`ocean_walk_r${i}`, `ocean/ocean-walk-r${i}.png`);
