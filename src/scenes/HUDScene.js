@@ -103,7 +103,9 @@ export class HUDScene extends Phaser.Scene {
 
   _ensureFace(panel, player) {
     if (panel.face || !player) return;
-    const key = `portrait_${player.config.key}`;
+    // Prefer the tight face crop; fall back to the full portrait if missing.
+    const faceKey = `face_${player.config.key}`;
+    const key = this.textures.exists(faceKey) ? faceKey : `portrait_${player.config.key}`;
     const fx = panel.x + 10, fy = panel.y + 12;
     if (this.textures.exists(key)) {
       const img = this.add.image(fx + FACE / 2, fy + FACE / 2, key).setOrigin(0.5, 0.5).setDepth(101);
