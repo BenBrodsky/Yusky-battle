@@ -148,6 +148,13 @@ export class Ocean extends Character {
       return;
     }
 
+    // Jump-button stomp: while airborne and falling, if Ocean comes down onto
+    // a downed enemy, lock him as the stomp target (Mario-style head-bounce).
+    if (!this.stompTarget && !this.isGrounded() && this.velZ < 0 && gameScene) {
+      const target = this._findStompContact(gameScene.enemies);
+      if (target) this.stompTarget = target;
+    }
+
     // Active stomp: bounce up and down on top of the downed enemy. Runs its
     // own quick physics and stays planted over the target, so skip the
     // normal movement/jump handling while it's going.
@@ -413,6 +420,20 @@ export class Ocean extends Character {
       const dx = Math.abs(e.worldX - this.worldX);
       const dy = Math.abs(e.groundY - this.groundY);
       if (Math.sqrt(dx * dx + dy * dy * 0.25) < 70) return e;
+    }
+    return null;
+  }
+
+  // A downed enemy Ocean is currently falling onto — horizontally over him,
+  // roughly the same depth, and his feet have dropped near the enemy's top.
+  _findStompContact(enemies) {
+    for (const e of enemies) {
+      if (!e.active) continue;
+      if (e.state !== 'ko' && e.state !== 'downed') continue;
+      const dx = Math.abs(e.worldX - this.worldX);
+      const dy = Math.abs(e.groundY - this.groundY);
+      const platform = Math.max(26, e.config.width * 0.85);
+      if (dx < 50 && dy < 46 && this.jumpZ <= platform + 16) return e;
     }
     return null;
   }
