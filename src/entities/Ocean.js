@@ -5,6 +5,12 @@ import { JUMP_VELOCITY, ATTACK_REACH, FLOOR_TOP, FLOOR_BOTTOM } from '../config/
 const ATTACK_DURATION    = 0.48; // 6 frames × 80ms
 const CORD_LEN           = 26;
 
+// Stomp: low, quick hops that land on top of the downed enemy (never the
+// ground). Higher gravity than a normal jump = snappier up-and-down.
+const STOMP_GRAVITY      = 4200;
+const STOMP_LAUNCH_VELZ  = 700;  // initial hop up onto the enemy
+const STOMP_BOUNCE_VELZ  = 500;  // quick little bounce between stomps
+
 const WALK_FRAME_MS   = 130;
 const BASE_SPRITE_H   = 128; // 20% smaller than Miles (160)
 const DEPTH_SCALE_MIN = 0.6;
@@ -142,6 +148,15 @@ export class Ocean extends Character {
       return;
     }
 
+    // Active stomp: bounce up and down on top of the downed enemy. Runs its
+    // own quick physics and stays planted over the target, so skip the
+    // normal movement/jump handling while it's going.
+    if (this.stompTarget) {
+      this._updateStomp(dt);
+      this._syncSprites();
+      return;
+    }
+
     if ((input.left || input.right || input.up || input.down) && this.isGrounded()) {
       this.energy = Math.max(0, this.energy - this.config.energyDrain * dt);
     }
@@ -151,19 +166,14 @@ export class Ocean extends Character {
       return;
     }
 
-    // Stomp loop
-    if (this.stompTarget && this.isGrounded() && !this.stompBounce) {
-      this._doStomp();
-    }
-
     if (input.attackJust && this.isGrounded() && gameScene) {
       const downed = this._findDownedEnemy(gameScene.enemies);
       if (downed) {
         this.stompTarget = downed;
-        this.stompBounce = false;
-        this.velZ  = JUMP_VELOCITY * 0.55;
-        this.jumpZ = 1;
-        this.state = 'jump';
+        this.facing = downed.worldX >= this.worldX ? 'right' : 'left';
+        this.velZ   = STOMP_LAUNCH_VELZ;  // hop up onto him
+        this.jumpZ  = Math.max(this.jumpZ, 1);
+        this.state  = 'jump';
         this.energy = Math.max(0, this.energy - this.config.attackDrain);
         return;
       }
@@ -172,29 +182,45 @@ export class Ocean extends Character {
     super.update(dt, input, gameScene);
   }
 
-  onLand() {
-    if (this.stompTarget) this.stompBounce = false;
-  }
+  onLand() {}
 
   // ── Stomp ─────────────────────────────────────────────────────────
 
-  _doStomp() {
+  // Bounce on the downed enemy: a low, quick arc that contacts the top of
+  // the enemy (not the floor) and immediately springs back up. Repeats until
+  // the enemy gets up or dies.
+  _updateStomp(dt) {
     const t = this.stompTarget;
-    if (!t || !t.active || t.state === 'dead') { this.stompTarget = null; return; }
 
-    const dx = Math.abs(t.worldX - this.worldX);
-    const dy = Math.abs(t.groundY - this.groundY);
-    if (dx > 60 || dy > 50) { this.stompTarget = null; return; }
+    // End the stomp if the target is gone, got back up, or died — let normal
+    // physics carry Ocean back down to the ground on the next frame.
+    if (!t || !t.active || (t.state !== 'ko' && t.state !== 'downed')) {
+      this.stompTarget = null;
+      return;
+    }
 
-    t.takeDamage(this.config.stompDmg, 0);
-    this._popup('STOMP!', 0xff4400);
+    // Stay planted over the enemy in both X and depth.
+    const k = Math.min(1, dt * 12);
+    this.worldX  += (t.worldX  - this.worldX)  * k;
+    this.groundY += (t.groundY - this.groundY) * k;
+    this.groundY  = Phaser.Math.Clamp(this.groundY, FLOOR_TOP, FLOOR_BOTTOM);
+    this.facing   = t.worldX >= this.worldX ? 'right' : 'left';
 
-    if (t.hp <= 0 || t.state === 'dead') { this.stompTarget = null; return; }
+    // Quick, low arc.
+    this.velZ -= STOMP_GRAVITY * dt;
+    this.jumpZ += this.velZ * dt;
+    this.state  = 'jump';
 
-    this.stompBounce = true;
-    this.velZ  = JUMP_VELOCITY * 0.5;
-    this.jumpZ = 1;
-    this.state = 'jump';
+    // Platform = top of the lying enemy. Land on him, never the ground.
+    const platform = Math.max(26, t.config.width * 0.85);
+
+    if (this.velZ < 0 && this.jumpZ <= platform) {
+      this.jumpZ = platform;
+      this.velZ  = STOMP_BOUNCE_VELZ;   // spring back up
+      t.takeDamage(this.config.stompDmg, 0);
+      this._popup('STOMP!', 0xff4400);
+      if (t.hp <= 0 || t.state === 'dead') this.stompTarget = null;
+    }
   }
 
   // ── Nap ───────────────────────────────────────────────────────────
