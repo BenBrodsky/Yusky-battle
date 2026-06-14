@@ -3,7 +3,7 @@ import { Projectile } from './Projectile.js';
 import { MELEE_RANGE, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
 const WALK_FRAME_MS    = 130;
-const BASE_SPRITE_H    = 160; // display height at mid-floor (scales with depth)
+const BASE_SPRITE_H    = 144; // display height at mid-floor (scales with depth)
 const DEPTH_SCALE_MIN  = 0.6; // scale at FLOOR_TOP (far away)
 const DEPTH_SCALE_MAX  = 1.3; // scale at FLOOR_BOTTOM (close up)
 // 6-frame walk cycle per direction, plus idle (legs together) and jump
