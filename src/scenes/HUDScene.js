@@ -106,8 +106,8 @@ export class HUDScene extends Phaser.Scene {
     const key = `portrait_${player.config.key}`;
     const fx = panel.x + 10, fy = panel.y + 12;
     if (this.textures.exists(key)) {
-      const img = this.add.image(fx + FACE / 2, fy, key).setOrigin(0.5, 0).setDepth(101);
-      img.setScale(Math.max(FACE / img.width, FACE / img.height));
+      const img = this.add.image(fx + FACE / 2, fy + FACE / 2, key).setOrigin(0.5, 0.5).setDepth(101);
+      img.setScale(Math.min(FACE / img.width, FACE / img.height));
       const mg = this.add.graphics();
       mg.fillRect(fx, fy, FACE, FACE);
       img.setMask(mg.createGeometryMask());

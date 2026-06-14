@@ -37,7 +37,7 @@ export class Enemy {
     this.attackCooldown = 0;
     this.hitThisAttack  = false;
     this.koTimer        = 0;
-    this.staggered      = false; // one-time half-health knockdown spent?
+    this.staggerCount   = 0;    // how many knockdowns triggered (max 2: at 75%, at 25%)
 
     // Detection / attack ranges
     this.detectionRange = config.detectionRange ?? 320;
@@ -105,9 +105,14 @@ export class Enemy {
       return;
     }
 
-    // One-time knockdown when damage first reaches 50% — down 2s, then gets back up
-    if (!this.staggered && this.hp <= this.maxHP * 0.5) {
-      this.staggered = true;
+    // First knockdown at 75% HP, second at 25% HP — each time stompable by Ocean
+    if (this.staggerCount < 1 && this.hp <= this.maxHP * 0.75) {
+      this.staggerCount++;
+      this._triggerKnockdown(knockbackX);
+      return;
+    }
+    if (this.staggerCount < 2 && this.hp <= this.maxHP * 0.25) {
+      this.staggerCount++;
       this._triggerKnockdown(knockbackX);
       return;
     }
