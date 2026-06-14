@@ -6,7 +6,7 @@ const ATTACK_DURATION    = 0.48; // 6 frames × 80ms
 const CORD_LEN           = 26;
 
 const WALK_FRAME_MS   = 130;
-const BASE_SPRITE_H   = 160;
+const BASE_SPRITE_H   = 128; // 20% smaller than Miles (160)
 const DEPTH_SCALE_MIN = 0.6;
 const DEPTH_SCALE_MAX = 1.3;
 
