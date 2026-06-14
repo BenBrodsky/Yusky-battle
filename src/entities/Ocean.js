@@ -97,29 +97,22 @@ export class Ocean extends Character {
     this.energy = Math.max(0, this.energy - this.config.attackDrain);
   }
 
-  // Allow two hit windows per swing; hitConfirm advances the phase
   getAttackHitbox() {
-    if (this.state !== 'attack') return null;
-
-    const elapsed = ATTACK_DURATION - this.stateTimer;
+    if (this.state !== 'attack' || this.hitThisSwing) return null;
+    const progress = 1 - (this.stateTimer / ATTACK_DURATION);
+    if (progress < 0.2 || progress > 0.85) return null;
     const dir = this.facing === 'right' ? 1 : -1;
-    const hitbox = {
-      x:          this.worldX + dir * (this.config.width * 0.5 + ATTACK_REACH * 0.55 / 2),
+    return {
+      x:          this.worldX + dir * (this.config.width * 0.5 + ATTACK_REACH / 2),
       y:          this.groundY - this.config.height * 0.45,
-      w:          ATTACK_REACH * 0.55,   // shorter reach — stay close
+      w:          ATTACK_REACH,
       h:          this.config.height * 0.7,
       knockbackX: dir,
     };
-
-    // Outswing hit — bunny fully extended (frames 3-4, ~50–75% through)
-    if (elapsed >= 0.24 && elapsed < 0.36 && this.nunchuckPhase === 0) return hitbox;
-    // Backswing hit — follow-through return (frame 5+)
-    if (elapsed >= 0.38 && this.nunchuckPhase === 1) return hitbox;
-    return null;
   }
 
   hitConfirm() {
-    this.nunchuckPhase++; // advance phase; don't set hitThisSwing so second hit can land
+    this.hitThisSwing = true;
   }
 
   getAttackDamage() { return this.config.meleeDmg; }
