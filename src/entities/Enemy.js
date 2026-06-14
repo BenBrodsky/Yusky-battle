@@ -105,16 +105,20 @@ export class Enemy {
       return;
     }
 
-    // First knockdown at 75% HP, second at 25% HP — each time stompable by Ocean
-    if (this.staggerCount < 1 && this.hp <= this.maxHP * 0.75) {
-      this.staggerCount++;
-      this._triggerKnockdown(knockbackX);
-      return;
-    }
-    if (this.staggerCount < 2 && this.hp <= this.maxHP * 0.25) {
-      this.staggerCount++;
-      this._triggerKnockdown(knockbackX);
-      return;
+    // First knockdown at 75% HP, second at 25% HP — each time stompable by
+    // Ocean. Bosses are exempt: a knocked-down boss is a helpless punching bag
+    // and gets bursted from 75% to 0 in the 2s window. The king fights normally.
+    if (!this.isBoss) {
+      if (this.staggerCount < 1 && this.hp <= this.maxHP * 0.75) {
+        this.staggerCount++;
+        this._triggerKnockdown(knockbackX);
+        return;
+      }
+      if (this.staggerCount < 2 && this.hp <= this.maxHP * 0.25) {
+        this.staggerCount++;
+        this._triggerKnockdown(knockbackX);
+        return;
+      }
     }
 
     this.state      = ENEMY_STATES.HURT;
