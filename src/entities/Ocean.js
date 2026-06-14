@@ -280,25 +280,28 @@ export class Ocean extends Character {
       }
     }
 
-    // ── Energy bar ───────────────────────────────────────────────────
-    const bx = this.worldX;
-    const by = sy - this.config.height - 10;
-    this.energyBg.x = bx;
-    this.energyBg.y = by;
-    const frac = this.energy / this.config.maxEnergy;
-    this.energyBar.width = this.config.width * frac;
-    this.energyBar.x = bx - (this.config.width - this.config.width * frac) / 2;
-    this.energyBar.y = by;
-    this.energyBg.setDepth(this.groundY + 2);
-    this.energyBar.setDepth(this.groundY + 2);
-
-    if (frac < 0.25 && !this.isNapping) {
-      const pulse = 0.6 + Math.abs(Math.sin(Date.now() / 150)) * 0.4;
-      this.energyBar.fillColor = 0xff2200;
-      this.energyBar.setAlpha(pulse);
-    } else {
-      this.energyBar.fillColor = 0xff8800;
-      this.energyBar.setAlpha(1);
+    // ── Energy bar (hidden when real sprites loaded) ──────────────────
+    this.energyBg.setVisible(!this._hasSprites);
+    this.energyBar.setVisible(!this._hasSprites);
+    if (!this._hasSprites) {
+      const bx = this.worldX;
+      const by = sy - this.config.height - 10;
+      this.energyBg.x = bx;
+      this.energyBg.y = by;
+      const frac = this.energy / this.config.maxEnergy;
+      this.energyBar.width = this.config.width * frac;
+      this.energyBar.x = bx - (this.config.width - this.config.width * frac) / 2;
+      this.energyBar.y = by;
+      this.energyBg.setDepth(this.groundY + 2);
+      this.energyBar.setDepth(this.groundY + 2);
+      if (frac < 0.25 && !this.isNapping) {
+        const pulse = 0.6 + Math.abs(Math.sin(Date.now() / 150)) * 0.4;
+        this.energyBar.fillColor = 0xff2200;
+        this.energyBar.setAlpha(pulse);
+      } else {
+        this.energyBar.fillColor = 0xff8800;
+        this.energyBar.setAlpha(1);
+      }
     }
 
     // ── Stuffed rabbit ────────────────────────────────────────────────
