@@ -19,6 +19,7 @@ const WALK_SPRITE_KEYS = [
 const FRAMES_PER_DIR = 10; // 8 walk + idle + jump
 const IDLE_FRAME     = 8;
 const JUMP_FRAME     = 9;
+const JUMP_SCALE     = 0.72; // tucked jump pose renders smaller than standing height
 const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5, 6, 7];
 
 // Two alternating punches: lead jab and rear cross. 3 frames each, per direction.
@@ -179,8 +180,10 @@ export class Ben extends Character {
         if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
         this._activeFrameIdx = frameIdx;
       }
+      // Tucked jump pose renders smaller so it matches his standing scale
+      const fsx = (frameNum === JUMP_FRAME) ? sx * JUMP_SCALE : sx;
       this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
-        .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
+        .setDepth(this.groundY).setScale(fsx, fsx).setAlpha(alpha);
     } else {
       // Placeholder gloves
       const gOffX = dir * (this.config.width * 0.5 + 4);
