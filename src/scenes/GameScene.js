@@ -64,6 +64,8 @@ export class GameScene extends Phaser.Scene {
     this.load.image('ocean_jump_r', 'ocean/ocean-jump-r.png');
     this.load.image('ocean_jump_l', 'ocean/ocean-jump-l.png');
     this.load.image('ocean_sleep',  'ocean/ocean-sleep.png');
+    this.load.image('ocean_down_r', 'ocean/ocean-down-r.png');
+    this.load.image('ocean_down_l', 'ocean/ocean-down-l.png');
     for (let i = 1; i <= 6; i++) {
       this.load.image(`ocean_attack_r${i}`, `ocean/ocean-attack-r${i}.png`);
       this.load.image(`ocean_attack_l${i}`, `ocean/ocean-attack-l${i}.png`);
