@@ -1,9 +1,27 @@
 import Phaser from 'phaser';
 import { Character } from './Character.js';
-import { JUMP_VELOCITY, ATTACK_REACH } from '../config/constants.js';
+import { JUMP_VELOCITY, ATTACK_REACH, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
-const ATTACK_DURATION = 0.18; // faster swing than base 0.32s
-const CORD_LEN        = 26;   // pixels from hand to rabbit centre
+const ATTACK_DURATION = 0.18;
+const CORD_LEN        = 26;
+
+const WALK_FRAME_MS   = 130;
+const BASE_SPRITE_H   = 160;
+const DEPTH_SCALE_MIN = 0.6;
+const DEPTH_SCALE_MAX = 1.3;
+
+const WALK_SPRITE_KEYS = [
+  'ocean_walk_r1', 'ocean_walk_r2', 'ocean_walk_r3',
+  'ocean_walk_r4', 'ocean_walk_r5', 'ocean_walk_r6',
+  'ocean_idle_r',  'ocean_jump_r',
+  'ocean_walk_l1', 'ocean_walk_l2', 'ocean_walk_l3',
+  'ocean_walk_l4', 'ocean_walk_l5', 'ocean_walk_l6',
+  'ocean_idle_l',  'ocean_jump_l',
+];
+const FRAMES_PER_DIR = 8;
+const IDLE_FRAME     = 6;
+const JUMP_FRAME     = 7;
+const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5];
 
 export class Ocean extends Character {
   constructor(scene, worldX, groundY, config, playerIndex) {
@@ -35,6 +53,21 @@ export class Ocean extends Character {
     this.rabbitEye  = scene.add.circle(0, 0, 2, 0x000000).setDepth(this.groundY + 4);
     // Cord drawn with graphics each frame
     this.rabbitCord = scene.add.graphics().setDepth(this.groundY + 2);
+
+    this._initWalkSprite();
+  }
+
+  _initWalkSprite() {
+    this._hasSprites = WALK_SPRITE_KEYS.every(k => this.scene.textures.exists(k));
+    if (!this._hasSprites) return;
+
+    this.walkFrames = WALK_SPRITE_KEYS.map(key =>
+      this.scene.add.image(this.worldX, this.groundY, key)
+        .setOrigin(0.5, 1)
+        .setVisible(false)
+    );
+    this.walkSprite      = this.walkFrames[0];
+    this._activeFrameIdx = -1;
   }
 
   // ── Attack overrides ──────────────────────────────────────────────
@@ -174,6 +207,40 @@ export class Ocean extends Character {
     const sy  = this.groundY - this.jumpZ;
     const dir = this.facing === 'right' ? 1 : -1;
 
+    // ── Walk sprites ─────────────────────────────────────────────────
+    if (this._hasSprites) {
+      this.sprite.setVisible(false);
+      this.eyeL.setVisible(false);
+      this.eyeR.setVisible(false);
+      this.rabbitBody.setVisible(false);
+      this.rabbitEarL.setVisible(false);
+      this.rabbitEarR.setVisible(false);
+      this.rabbitEye.setVisible(false);
+      this.rabbitCord.setVisible(false);
+
+      const depthT     = Math.max(0, Math.min(1, (this.groundY - FLOOR_TOP) / (FLOOR_BOTTOM - FLOOR_TOP)));
+      const depthScale = DEPTH_SCALE_MIN + depthT * (DEPTH_SCALE_MAX - DEPTH_SCALE_MIN);
+      const baseScale  = BASE_SPRITE_H / this.walkFrames[0].height;
+      const sx         = baseScale * depthScale;
+      const alpha      = this.sprite.alpha;
+
+      const frameNum = !this.isGrounded()
+        ? JUMP_FRAME
+        : (this.state === 'walk')
+          ? WALK_SEQUENCE[Math.floor(Date.now() / WALK_FRAME_MS) % WALK_SEQUENCE.length]
+          : IDLE_FRAME;
+      const dirOff   = this.facing === 'right' ? 0 : FRAMES_PER_DIR;
+      const frameIdx = dirOff + frameNum;
+
+      if (frameIdx !== this._activeFrameIdx) {
+        if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
+        this._activeFrameIdx = frameIdx;
+      }
+      const frame = this.walkFrames[frameIdx];
+      frame.setVisible(true).setPosition(this.worldX, sy).setDepth(this.groundY)
+        .setScale(sx, sx).setAlpha(alpha);
+    }
+
     // ── Energy bar ───────────────────────────────────────────────────
     const bx = this.worldX;
     const by = sy - this.config.height - 10;
@@ -253,6 +320,23 @@ export class Ocean extends Character {
     });
   }
 
+  _setVisible(v) {
+    super._setVisible(v);
+    if (this.walkFrames) {
+      this.walkFrames.forEach((f, i) => f.setVisible(v && i === this._activeFrameIdx));
+    }
+  }
+
+  _flashTint(color, duration) {
+    super._flashTint(color, duration);
+    if (this._hasSprites && this.walkFrames) {
+      this.walkFrames.forEach(f => f.setTint(color));
+      this.scene.time.delayedCall(200, () => {
+        if (this.active) this.walkFrames.forEach(f => f.clearTint());
+      });
+    }
+  }
+
   destroy() {
     super.destroy();
     this.energyBg.destroy();
@@ -263,5 +347,6 @@ export class Ocean extends Character {
     this.rabbitEarR.destroy();
     this.rabbitEye.destroy();
     this.rabbitCord.destroy();
+    this.walkFrames?.forEach(f => f.destroy());
   }
 }
