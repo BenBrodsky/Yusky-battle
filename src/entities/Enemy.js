@@ -37,6 +37,7 @@ export class Enemy {
     this.attackCooldown = 0;
     this.hitThisAttack  = false;
     this.koTimer        = 0;
+    this.staggered      = false; // one-time half-health knockdown spent?
 
     // Detection / attack ranges
     this.detectionRange = config.detectionRange ?? 320;
@@ -91,19 +92,51 @@ export class Enemy {
     if (!this.active || this.state === ENEMY_STATES.DEAD) return;
     this.hp = Math.max(0, this.hp - amount);
     this.hitThisAttack = true;
+    this._flashRed();
 
     if (this.hp <= 0) {
       this._triggerKO(knockbackX);
       return;
     }
+
+    // Already down (stagger or being stomped): stay down, just nudge — don't pop up
+    if (this.state === ENEMY_STATES.DOWNED) {
+      this.velX = knockbackX * 120;
+      return;
+    }
+
+    // One-time knockdown when damage first reaches 50% — down 2s, then gets back up
+    if (!this.staggered && this.hp <= this.maxHP * 0.5) {
+      this.staggered = true;
+      this._triggerKnockdown(knockbackX);
+      return;
+    }
+
     this.state      = ENEMY_STATES.HURT;
     this.stateTimer = 0.28;
     this.velX       = knockbackX * 180;
-    // Red flash
+  }
+
+  _flashRed() {
     this.sprite.setFillStyle(0xff8888);
     this.scene.time.delayedCall(200, () => {
-      if (this.active && this.sprite?.active) this.sprite.setFillStyle(this.config.color);
+      if (this.active && this.sprite?.active &&
+          this.state !== ENEMY_STATES.KO) this.sprite.setFillStyle(this.config.color);
     });
+  }
+
+  _triggerKnockdown(knockbackX = 0) {
+    this.state      = ENEMY_STATES.DOWNED;
+    this.stateTimer = 2.0; // lies down for 2s, then gets up
+    this.velX       = knockbackX * 220;
+    this.velY       = 0;
+  }
+
+  _getUp() {
+    this.state      = ENEMY_STATES.CHASE;
+    this.velX       = 0;
+    this.attackCooldown = 0.4; // brief beat before swinging again
+    if (this.sprite?.active) this.sprite.setFillStyle(this.config.color);
   }
 
   _triggerKO(knockbackX = 0) {
@@ -133,6 +166,14 @@ export class Enemy {
       this.worldX += this.velX * dt;
       this.koTimer -= dt;
       if (this.koTimer <= 0) this._die();
+      this._syncSprites();
+      return;
+    }
+
+    if (this.state === ENEMY_STATES.DOWNED) {
+      this.velX *= 0.85;
+      this.worldX += this.velX * dt;
+      if (this.stateTimer <= 0) this._getUp();
       this._syncSprites();
       return;
     }
@@ -254,19 +295,24 @@ export class Enemy {
     this.pupR.x = eyeX + 5 + dir; this.pupR.y = eyeY;
     [this.eyeL, this.eyeR, this.pupL, this.pupR].forEach(e => e.setDepth(this.groundY + 1));
 
-    const hpFrac    = this.hp / this.maxHP;
-    this.hpBar.width = this.config.width * hpFrac;
-    this.hpBar.x     = this.worldX - (this.config.width - this.config.width * hpFrac) / 2;
-    this.hpBar.y     = sy - this.config.height - 10;
-    this.hpBarBg.x   = this.worldX;
-    this.hpBarBg.y   = sy - this.config.height - 10;
-    this.hpBar.setDepth(this.groundY + 2);
-    this.hpBarBg.setDepth(this.groundY + 2);
-
-    if (this.state === ENEMY_STATES.KO) {
-      this.sprite.setAngle(90);
-    } else {
-      this.sprite.setAngle(0);
+    // Floating HP bar over the head — normal enemies only. The boss uses the
+    // dedicated bottom HUD bar instead, so hide his over-head bar.
+    const showBar = !this.isBoss && this.state !== ENEMY_STATES.KO;
+    this.hpBar.setVisible(showBar);
+    this.hpBarBg.setVisible(showBar);
+    if (showBar) {
+      const hpFrac     = this.hp / this.maxHP;
+      this.hpBar.width = this.config.width * hpFrac;
+      this.hpBar.x     = this.worldX - (this.config.width - this.config.width * hpFrac) / 2;
+      this.hpBar.y     = sy - this.config.height - 10;
+      this.hpBarBg.x   = this.worldX;
+      this.hpBarBg.y   = sy - this.config.height - 10;
+      this.hpBar.setDepth(this.groundY + 2);
+      this.hpBarBg.setDepth(this.groundY + 2);
     }
+
+    // Lie down while KO'd or knocked down
+    const lying = this.state === ENEMY_STATES.KO || this.state === ENEMY_STATES.DOWNED;
+    this.sprite.setAngle(lying ? 90 : 0);
   }
 }

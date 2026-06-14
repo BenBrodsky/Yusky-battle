@@ -296,8 +296,9 @@ export class Character {
 
   _despawnKO() {
     this.koStars.forEach(s => s.setVisible(false));
+    // Spend a life. Start at 3 → KO brings it 3→2→1 with respawns; KO at 1→0 is out.
+    this.lives--;
     if (this.lives > 0) {
-      this.lives--;
       this._respawn();
     } else {
       this.active = false;
