@@ -56,10 +56,13 @@ export class GameScene extends Phaser.Scene {
       this.load.image(`ben_cross_r${i}`, `ben/ben-cross-r${i}.png`);
       this.load.image(`ben_cross_l${i}`, `ben/ben-cross-l${i}.png`);
     }
-    // Linda 6-frame walk cycle + idle + jump + down + 6-frame swing, per direction
+    // Linda 6-frame walk cycle + idle + jump + down, per direction
     for (let i = 1; i <= 6; i++) {
       this.load.image(`linda_walk_r${i}`,  `linda/linda-walk-r${i}.png`);
       this.load.image(`linda_walk_l${i}`,  `linda/linda-walk-l${i}.png`);
+    }
+    // Linda 13-frame swing (denser, full cross-body arc), per direction
+    for (let i = 1; i <= 13; i++) {
       this.load.image(`linda_swing_r${i}`, `linda/linda-swing-r${i}.png`);
       this.load.image(`linda_swing_l${i}`, `linda/linda-swing-l${i}.png`);
     }

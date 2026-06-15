@@ -3,11 +3,15 @@ import { Projectile } from './Projectile.js';
 import { MELEE_RANGE, FLOOR_TOP, FLOOR_BOTTOM } from '../config/constants.js';
 
 const WALK_FRAME_MS   = 120;
-const BASE_SPRITE_H   = 152; // slightly smaller than Ben (208), slightly bigger than Miles (144)
+// Linda renders bigger than Miles, smaller than Ben. Her body fills ~90% of the
+// tall sprite canvas (1237px body in a 1375px canvas), so BASE_SPRITE_H must be
+// scaled up vs. the raw target: visible body ≈ 1237/1375 * BASE_SPRITE_H ≈ 170px.
+// (Miles visible ≈ 141px, Ben visible ≈ 187px.)
+const BASE_SPRITE_H   = 189;
 const DEPTH_SCALE_MIN = 0.6;
 const DEPTH_SCALE_MAX = 1.3;
-const ATTACK_DURATION = 0.40; // slightly longer than base to cover swing arc
-const N_SWING_FRAMES  = 6;
+const ATTACK_DURATION = 0.32; // snappy: 13 swing frames played fast (~25ms each)
+const N_SWING_FRAMES  = 13;
 
 const WALK_SPRITE_KEYS = [
   'linda_walk_r1', 'linda_walk_r2', 'linda_walk_r3',
@@ -23,10 +27,14 @@ const JUMP_FRAME     = 7;
 const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5];
 
 const SWING_SPRITE_KEYS = [
-  'linda_swing_r1', 'linda_swing_r2', 'linda_swing_r3',
-  'linda_swing_r4', 'linda_swing_r5', 'linda_swing_r6',
-  'linda_swing_l1', 'linda_swing_l2', 'linda_swing_l3',
-  'linda_swing_l4', 'linda_swing_l5', 'linda_swing_l6',
+  'linda_swing_r1',  'linda_swing_r2',  'linda_swing_r3',  'linda_swing_r4',
+  'linda_swing_r5',  'linda_swing_r6',  'linda_swing_r7',  'linda_swing_r8',
+  'linda_swing_r9',  'linda_swing_r10', 'linda_swing_r11', 'linda_swing_r12',
+  'linda_swing_r13',
+  'linda_swing_l1',  'linda_swing_l2',  'linda_swing_l3',  'linda_swing_l4',
+  'linda_swing_l5',  'linda_swing_l6',  'linda_swing_l7',  'linda_swing_l8',
+  'linda_swing_l9',  'linda_swing_l10', 'linda_swing_l11', 'linda_swing_l12',
+  'linda_swing_l13',
 ];
 
 // Linda — tennis racket close combat, lob shot ranged.
