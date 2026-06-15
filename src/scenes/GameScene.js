@@ -299,7 +299,10 @@ export class GameScene extends Phaser.Scene {
       if (!hitbox) return;
 
       this.enemies.forEach(enemy => {
-        if (!enemy.active || enemy.state === 'dead' || enemy.hitThisAttack) return;
+        // No hitThisAttack guard here: each fresh press re-arms the player's
+        // hitbox (hitThisSwing), and that flag alone gates one hit per press —
+        // so button-mashing damages the enemy on every press.
+        if (!enemy.active || enemy.state === 'dead') return;
         if (boxOverlap(hitbox, enemy.getHurtbox())) {
           const dmg = player.getAttackDamage();
           enemy.takeDamage(dmg, hitbox.knockbackX ?? 0);

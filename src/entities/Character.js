@@ -176,6 +176,10 @@ export class Character {
       return;
     }
 
+    // Attack input is processed every frame so button-mashing lands a hit on
+    // each press — even mid-swing — without restarting the animation.
+    this._handleAttack(dt, input, gameScene);
+
     if (this.state === 'attack' && this.stateTimer > 0) {
       this._applyPhysics(dt);
       this._syncSprites();
@@ -184,7 +188,6 @@ export class Character {
 
     this._handleMovement(dt, input);
     this._handleJump(dt, input);
-    this._handleAttack(dt, input, gameScene);
     this._handleHug(dt, input, gameScene);
     this._applyPhysics(dt);
     this._syncSprites();
@@ -234,13 +237,24 @@ export class Character {
   }
 
   _handleAttack(dt, input, gameScene) {
-    if (input.attackJust && this.state !== 'attack') {
+    if (!input.attackJust) return;
+
+    if (this.state !== 'attack') {
+      // Begin a new swing: plays the animation and runs the character's action
+      // (projectile, throw, etc.).
       this.state        = 'attack';
       this.stateTimer   = 0.32;
       this.hitThisSwing = false;
       this.comboStep    = (this.comboStep + 1) % 3;
       this.comboTimer   = 0.55;
       this.onAttack(gameScene);
+    } else {
+      // Button-mash: a press during an in-progress swing re-arms the hitbox so
+      // this press lands another hit, but deliberately does NOT touch stateTimer
+      // (no animation restart) or re-run onAttack (no projectile spam).
+      this.hitThisSwing = false;
+      this.comboStep    = (this.comboStep + 1) % 3;
+      this.comboTimer   = 0.55;
     }
   }
 
