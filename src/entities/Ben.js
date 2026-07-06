@@ -114,6 +114,9 @@ export class Ben extends Character {
     enemy.flyVelZ      = 480;
     enemy.state        = 'fly';
     this._popup('TOSS!', 0xff8800);
+    gameScene?.hitStop?.(0.1);
+    gameScene?.spawnHitSpark?.(enemy.worldX, enemy.groundY - enemy.config.height * 0.5, true);
+    gameScene?.cameras.main.shake(80, 0.005);
   }
 
   getAttackDamage() {
@@ -208,8 +211,10 @@ export class Ben extends Character {
       }
       // Tucked jump pose renders smaller so it matches his standing scale
       const fsx = (frameNum === JUMP_FRAME) ? sx * JUMP_SCALE : sx;
+      const fx  = this.getFxScale();
       this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
-        .setDepth(this.groundY).setScale(fsx, fsx).setAlpha(alpha);
+        .setDepth(this.groundY).setScale(fsx * fx.x, fsx * fx.y)
+        .setAngle(this.getFxAngle()).setAlpha(alpha);
     } else {
       // Placeholder gloves
       const gOffX = dir * (this.config.width * 0.5 + 4);

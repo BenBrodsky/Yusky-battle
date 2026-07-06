@@ -36,6 +36,8 @@ export class Character {
     this.isKO          = false;
     this.koBlinkTimer  = 0;
     this.hitThisSwing  = false;
+    this._squashT      = 0;   // landing squash timer
+    this._runDustT     = 0;   // running dust accumulator
 
     this._createSprites();
     this._createKOStars();
@@ -145,6 +147,29 @@ export class Character {
 
   isGrounded() { return this.jumpZ <= 0; }
 
+  // ── Animation feel (squash & stretch, run lean) ────────────────────
+  // Multipliers subclasses apply on top of their sprite scale: vertical
+  // stretch while airborne, a squash pop on landing.
+  getFxScale() {
+    if (this._squashT > 0) {
+      const t = this._squashT / 0.14;
+      return { x: 1 + 0.18 * t, y: 1 - 0.20 * t };
+    }
+    if (!this.isGrounded()) {
+      const s = Math.min(1, Math.abs(this.velZ) / 700);
+      return { x: 1 - 0.08 * s, y: 1 + 0.12 * s };
+    }
+    return { x: 1, y: 1 };
+  }
+
+  // Slight forward lean while running (sprites pivot at their feet)
+  getFxAngle() {
+    if (this.state === 'walk' && this.velX !== 0) {
+      return (this.facing === 'right' ? 1 : -1) * 3.5;
+    }
+    return 0;
+  }
+
   // ── Update ────────────────────────────────────────────────────────
 
   update(dt, input, gameScene) {
@@ -153,8 +178,19 @@ export class Character {
     this.stateTimer  = Math.max(0, this.stateTimer - dt);
     this.invulnTimer = Math.max(0, this.invulnTimer - dt);
     this.comboTimer  = Math.max(0, this.comboTimer  - dt);
+    this._squashT    = Math.max(0, this._squashT    - dt);
 
     if (this.comboTimer <= 0) this.comboStep = 0;
+
+    // Little dust kicks while running
+    if (this.state === 'walk' && this.isGrounded()) {
+      this._runDustT += dt;
+      if (this._runDustT > 0.3) {
+        this._runDustT = 0;
+        const dir = this.facing === 'right' ? 1 : -1;
+        this.scene.spawnDust?.(this.worldX - dir * 12, this.groundY, 1);
+      }
+    }
 
     // Release attack state once its timer expires so the next attack and jump work
     if (this.state === 'attack' && this.stateTimer <= 0) {
@@ -181,6 +217,7 @@ export class Character {
     this._handleAttack(dt, input, gameScene);
 
     if (this.state === 'attack' && this.stateTimer > 0) {
+      this.velX *= 0.86; // lunge friction
       this._applyPhysics(dt);
       this._syncSprites();
       return;
@@ -230,6 +267,8 @@ export class Character {
       if (this.jumpZ <= 0) {
         this.jumpZ = 0;
         this.velZ  = 0;
+        this._squashT = 0.14; // landing squash pop
+        this.scene.spawnDust?.(this.worldX, this.groundY, 4);
         this.onLand();
         this.state = this.velX !== 0 || this.velY !== 0 ? 'walk' : 'idle';
       }
@@ -247,6 +286,10 @@ export class Character {
       this.hitThisSwing = false;
       this.comboStep    = (this.comboStep + 1) % 3;
       this.comboTimer   = 0.55;
+      // Step into the punch — a small forward lunge that decays during the
+      // swing (also stops walk momentum from sliding through the attack)
+      this.velX = (this.facing === 'right' ? 1 : -1) * 85;
+      this.velY = 0;
       this.onAttack(gameScene);
     } else {
       // Button-mash: a press during an in-progress swing re-arms the hitbox so

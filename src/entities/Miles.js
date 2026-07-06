@@ -171,9 +171,10 @@ export class Miles extends Character {
       if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
       this._activeFrameIdx = frameIdx;
     }
+    const fx    = this.getFxScale();
     const frame = this.walkFrames[frameIdx];
     frame.setVisible(true).setPosition(this.worldX, sy).setDepth(this.groundY)
-      .setScale(sx, sy2).setAlpha(alpha);
+      .setScale(sx * fx.x, sy2 * fx.y).setAngle(this.getFxAngle()).setAlpha(alpha);
   }
 
   _setVisible(v) {

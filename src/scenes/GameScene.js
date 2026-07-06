@@ -22,8 +22,8 @@ export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
   preload() {
-    const key = LEVEL_1.bgImage;
-    if (key) this.load.image(key, `${key}.png`);
+    const bgKeys = LEVEL_1.bgImages || (LEVEL_1.bgImage ? [LEVEL_1.bgImage] : []);
+    bgKeys.forEach(key => this.load.image(key, `${key}.png`));
     this.load.audio('level1-music', 'level1-music.mp3');
     this.load.audio('boss-music',   'boss-music.mp3');
     // Miles 6-frame walk cycle + idle, per direction
@@ -97,6 +97,55 @@ export class GameScene extends Phaser.Scene {
     this.bossEnemy      = null;
     this.levelMusic     = null;
     this.bossMusic      = null;
+    this.hitstop        = 0;
+  }
+
+  // ── Game-feel helpers ────────────────────────────────────────────────
+
+  // Freeze the whole fight for a few frames when a hit lands — the classic
+  // arcade trick that makes impacts feel weighty.
+  hitStop(seconds) {
+    this.hitstop = Math.max(this.hitstop, seconds);
+  }
+
+  // Starburst + flying chips at the point of impact
+  spawnHitSpark(x, y, heavy = false) {
+    const star = this.add.star(x, y, 4, heavy ? 7 : 5, heavy ? 18 : 11, 0xfff2aa)
+      .setDepth(2000).setRotation(Math.random() * Math.PI);
+    this.tweens.add({
+      targets: star, scale: heavy ? 1.8 : 1.3, alpha: 0, duration: heavy ? 160 : 110,
+      onComplete: () => star.destroy(),
+    });
+    const n = heavy ? 5 : 3;
+    for (let i = 0; i < n; i++) {
+      const chip  = this.add.circle(x, y, 3, 0xffffff).setDepth(2000);
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 60 + Math.random() * 90;
+      this.tweens.add({
+        targets: chip,
+        x: x + Math.cos(angle) * speed * 0.4,
+        y: y + Math.sin(angle) * speed * 0.4 - 12,
+        alpha: 0, duration: 220,
+        onComplete: () => chip.destroy(),
+      });
+    }
+  }
+
+  // Dust puffs at the feet — landings, big slams, running kicks of dirt
+  spawnDust(x, y, count = 4) {
+    for (let i = 0; i < count; i++) {
+      const puff = this.add.circle(
+        x + (Math.random() - 0.5) * 18, y - 2,
+        3 + Math.random() * 3, 0xd8d0c0, 0.7
+      ).setDepth(y - 1);
+      this.tweens.add({
+        targets: puff,
+        x: puff.x + (Math.random() - 0.5) * 44,
+        y: puff.y - 8 - Math.random() * 10,
+        scale: 1.8, alpha: 0, duration: 300 + Math.random() * 150,
+        onComplete: () => puff.destroy(),
+      });
+    }
   }
 
   create() {
@@ -153,13 +202,18 @@ export class GameScene extends Phaser.Scene {
   // ── Build level background ──────────────────────────────────────────
 
   _buildBackground(levelData, worldWidth) {
-    const key = levelData.bgImage;
+    const keys = (levelData.bgImages || (levelData.bgImage ? [levelData.bgImage] : []))
+      .filter(k => this.textures.exists(k));
 
-    if (key && this.textures.exists(key)) {
-      // Display once across the full world width — no tiling
-      this.add.image(worldWidth / 2, GAME_HEIGHT / 2, key)
-        .setDisplaySize(worldWidth, GAME_HEIGHT)
-        .setDepth(-10);
+    if (keys.length > 0) {
+      // Lay the background variants side by side across the long world so the
+      // scenery changes as the family fights through the level
+      const segW = worldWidth / keys.length;
+      keys.forEach((k, i) => {
+        this.add.image(segW * (i + 0.5), GAME_HEIGHT / 2, k)
+          .setDisplaySize(segW, GAME_HEIGHT)
+          .setDepth(-10);
+      });
     } else {
       // Fallback: programmatic gradient + ground
       const { bgColor, groundColor } = levelData;
@@ -196,6 +250,13 @@ export class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     const dt = delta / 1000;
+
+    // Hit-stop: freeze the action for a beat when a hit lands. Tweens
+    // (sparks, dust) keep animating, which sells the impact.
+    if (this.hitstop > 0) {
+      this.hitstop -= dt;
+      return;
+    }
 
     this.inputManager.update();
 
@@ -252,11 +313,13 @@ export class GameScene extends Phaser.Scene {
   _spawnEnemy(def) {
     let enemy;
     if (def.kind === 'bullykng') {
-      enemy = new BullyKing(this, def.x, def.y);
+      const nPlayers = this.players.filter(p => p?.active).length || 1;
+      enemy = new BullyKing(this, def.x, def.y, nPlayers);
       this.bossEnemy = enemy;
       this._startBossMusic();
     } else {
-      enemy = new MeanKid(this, def.x, def.y);
+      // 'meankid' | 'speedy' | 'bruiser'
+      enemy = new MeanKid(this, def.x, def.y, def.kind);
     }
     this.enemies.push(enemy);
   }
@@ -304,9 +367,16 @@ export class GameScene extends Phaser.Scene {
         // so button-mashing damages the enemy on every press.
         if (!enemy.active || enemy.state === 'dead') return;
         if (boxOverlap(hitbox, enemy.getHurtbox())) {
-          const dmg = player.getAttackDamage();
+          const dmg   = player.getAttackDamage();
+          const heavy = dmg >= 24;
           enemy.takeDamage(dmg, hitbox.knockbackX ?? 0);
           player.hitConfirm();
+          this.spawnHitSpark(
+            enemy.worldX - (hitbox.knockbackX ?? 0) * enemy.config.width * 0.3,
+            enemy.groundY - enemy.config.height * 0.55, heavy
+          );
+          this.hitStop(heavy ? 0.09 : 0.045);
+          if (heavy) this.cameras.main.shake(70, 0.004);
         }
       });
     });
@@ -319,6 +389,8 @@ export class GameScene extends Phaser.Scene {
         if (proj.overlaps(enemy) && !proj.hitEnemies.has(enemy)) {
           enemy.takeDamage(proj.damage, Math.sign(proj.velX));
           proj.onHitEnemy(enemy);
+          this.spawnHitSpark(enemy.worldX, enemy.groundY - enemy.config.height * 0.55, true);
+          this.hitStop(0.05);
         }
       });
     });
@@ -333,6 +405,8 @@ export class GameScene extends Phaser.Scene {
         if (boxOverlap(hitbox, player.getHurtbox())) {
           player.takeDamage(enemy.damage, hitbox.knockbackX ?? 0);
           enemy.hitThisAttack = true;
+          this.spawnHitSpark(player.worldX, player.groundY - player.config.height * 0.5, false);
+          this.hitStop(0.05);
         }
       });
     });
@@ -506,8 +580,23 @@ export class GameScene extends Phaser.Scene {
     if (alive.length === 0) {
       // All enemies cleared — open the gate
       this.gateX = Infinity;
-      this._showMessage('CLEARED!', 0x44ff44, 1200);
+      this._showGoArrow();
     }
+  }
+
+  // Classic beat-em-up "GO! →" blinker when the path opens up
+  _showGoArrow() {
+    if (this._goArrow?.active) return;
+    const arrow = this.add.text(GAME_WIDTH - 60, GAME_HEIGHT / 2 - 60, 'GO ▶', {
+      fontSize: '44px', fontStyle: 'bold',
+      fill: '#ffee00', stroke: '#000', strokeThickness: 8,
+    }).setOrigin(1, 0.5).setScrollFactor(0).setDepth(1000);
+    this._goArrow = arrow;
+    this.tweens.add({
+      targets: arrow, alpha: 0, duration: 280,
+      yoyo: true, repeat: 6, ease: 'Sine.easeInOut',
+      onComplete: () => arrow.destroy(),
+    });
   }
 
   _onPlayerKO(playerIndex) {

@@ -164,8 +164,10 @@ export class Linda extends Character {
       this._hideWalkFrame();
       this._activeFrameIdx = frameIdx;
     }
+    const fx = this.getFxScale();
     this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
-      .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
+      .setDepth(this.groundY).setScale(sx * fx.x, sx * fx.y)
+      .setAngle(this.getFxAngle()).setAlpha(alpha);
   }
 
   _hideWalkFrame() {

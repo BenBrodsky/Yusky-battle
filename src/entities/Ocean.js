@@ -230,6 +230,9 @@ export class Ocean extends Character {
       this.velZ  = STOMP_BOUNCE_VELZ;   // spring back up
       t.takeDamage(this.config.stompDmg, 0);
       this._popup('STOMP!', 0xff4400);
+      this.scene.spawnHitSpark?.(t.worldX, t.groundY - 24, true);
+      this.scene.spawnDust?.(t.worldX, t.groundY, 3);
+      this.scene.hitStop?.(0.05);
       if (t.hp <= 0 || t.state === 'dead') this.stompTarget = null;
     }
   }
@@ -354,8 +357,10 @@ export class Ocean extends Character {
           if (this._activeFrameIdx >= 0) this.walkFrames[this._activeFrameIdx].setVisible(false);
           this._activeFrameIdx = frameIdx;
         }
+        const fx = this.getFxScale();
         this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
-          .setDepth(this.groundY).setScale(sx, sx).setAlpha(alpha);
+          .setDepth(this.groundY).setScale(sx * fx.x, sx * fx.y)
+          .setAngle(this.getFxAngle()).setAlpha(alpha);
       }
     }
 
