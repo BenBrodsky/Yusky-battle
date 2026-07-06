@@ -6,9 +6,8 @@ export class BootScene extends Phaser.Scene {
   constructor() { super('Boot'); }
 
   create() {
-    // 'soccer_ball' is a real sprite loaded in GameScene — no placeholder,
-    // or Phaser would skip loading the PNG under the same key.
-    this._makeRect('tennis_ball', 16, 16, 0xddff00);
+    // 'soccer_ball' and 'tennis_ball' are real sprites loaded in GameScene —
+    // no placeholders, or Phaser would skip loading the PNGs under those keys.
     this._makeRect('chocolate',  26, 16, 0x6b3a2a);
     this._makeRect('tvset',      30, 24, 0x334466);
     this._makeRect('chicken',    26, 26, 0xf4a460);

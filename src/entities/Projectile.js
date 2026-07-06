@@ -31,6 +31,10 @@ export class Projectile {
     this.velX    = dir * speed;
     this.hitEnemies = new Set();
 
+    // Tennis ball flies with a bouncing arc; z = height above the ground line
+    this.z  = kind === 'tennis' ? 58  : 0;
+    this.vz = kind === 'tennis' ? 150 : 0;
+
     const hasTexture = textureKey && scene.textures.exists(textureKey);
     if (hasTexture) {
       this.sprite = scene.add.image(worldX, groundY, textureKey);
@@ -66,19 +70,35 @@ export class Projectile {
   }
 
   _updateTennis(dt) {
+    const depth = this._depthScale();
+
+    // Bouncing arc: gravity pulls the ball down and it skips off the pavement
+    this.vz -= 1250 * dt;
+    this.z  += this.vz * dt;
+    if (this.z <= 0) {
+      this.z = 0;
+      if (this.vz < -60) {
+        this.vz = -this.vz * 0.55;   // skip
+        this.scene.spawnDust?.(this.worldX, this.groundY, 1);
+      } else {
+        this.vz = 0;
+      }
+    }
+
     if (this.returning) {
       const dx    = this.owner.worldX - this.worldX;
       this.velX   = Math.sign(dx) * 520;
-      this.worldX += this.velX * dt;
+      this.worldX += this.velX * depth * dt;
       if (Math.abs(dx) < 30) { this._return(); return; }
     } else {
-      this.worldX += this.velX * dt;
+      this.worldX += this.velX * depth * dt;
 
       // Turn around once max range is reached
       const traveled = Math.abs(this.worldX - this.launchX);
       if (traveled >= this.maxRange) {
         this.returning = true;
         this.velX      = -this.velX;
+        this.vz        = Math.max(this.vz, 120); // pop up as it turns back
       }
     }
   }
@@ -158,7 +178,7 @@ export class Projectile {
 
   _syncSprite() {
     this.sprite.x = this.worldX;
-    this.sprite.y = this.groundY;
+    this.sprite.y = this.groundY - (this.z || 0);
     this.sprite.setDepth(this.groundY + 5);
     this.shadow.x = this.worldX;
     this.shadow.y = this.groundY + 4;
@@ -177,6 +197,8 @@ export class Projectile {
       // 0.45 is about the max before the pattern strobes (wagon-wheel effect)
       const rate = Math.max(0.16, 0.45 * Math.abs(this.velX) / 540);
       this.sprite.rotation += Math.sign(this.velX) * rate;
+    } else if (this.kind === 'tennis' && this.velX !== 0) {
+      this.sprite.rotation += Math.sign(this.velX) * 0.3;
     }
   }
 }

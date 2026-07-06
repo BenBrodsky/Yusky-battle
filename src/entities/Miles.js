@@ -205,7 +205,7 @@ export class Miles extends Character {
   _findNearestEnemy(enemies) {
     let best = null, bestDist = Infinity;
     for (const e of enemies) {
-      if (!e.active || e.state === 'dead') continue;
+      if (!e.active || e.state === 'dead' || e.state === 'ko') continue;
       const d = this._dist(e);
       if (d < bestDist) { bestDist = d; best = e; }
     }

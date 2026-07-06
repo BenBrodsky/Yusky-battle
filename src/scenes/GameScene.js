@@ -6,7 +6,7 @@ import { Ben   } from '../entities/Ben.js';
 import { Linda } from '../entities/Linda.js';
 import { Miles } from '../entities/Miles.js';
 import { Ocean } from '../entities/Ocean.js';
-import { MeanKid, BullyKing } from '../entities/MeanKid.js';
+import { MeanKid, BullyKing, Thrower } from '../entities/MeanKid.js';
 
 const CHAR_CLASS = { ben: Ben, linda: Linda, miles: Miles, ocean: Ocean };
 
@@ -22,7 +22,7 @@ export class GameScene extends Phaser.Scene {
   constructor() { super('Game'); }
 
   preload() {
-    const bgKeys = LEVEL_1.bgImages || (LEVEL_1.bgImage ? [LEVEL_1.bgImage] : []);
+    const bgKeys = [...new Set(LEVEL_1.bgSequence || [])];
     bgKeys.forEach(key => this.load.image(key, `${key}.png`));
     this.load.audio('level1-music', 'level1-music.mp3');
     this.load.audio('boss-music',   'boss-music.mp3');
@@ -72,6 +72,7 @@ export class GameScene extends Phaser.Scene {
     this.load.image('linda_jump_l', 'linda/linda-jump-l.png');
     this.load.image('linda_down_r', 'linda/linda-down-r.png');
     this.load.image('linda_down_l', 'linda/linda-down-l.png');
+    this.load.image('tennis_ball',  'linda/tennis-ball.png');
     // Ocean 6-frame walk cycle + idle + jump, per direction
     for (let i = 1; i <= 6; i++) {
       this.load.image(`ocean_walk_r${i}`, `ocean/ocean-walk-r${i}.png`);
@@ -98,6 +99,7 @@ export class GameScene extends Phaser.Scene {
     this.levelMusic     = null;
     this.bossMusic      = null;
     this.hitstop        = 0;
+    this.enemyShots     = [];
   }
 
   // ── Game-feel helpers ────────────────────────────────────────────────
@@ -202,17 +204,18 @@ export class GameScene extends Phaser.Scene {
   // ── Build level background ──────────────────────────────────────────
 
   _buildBackground(levelData, worldWidth) {
-    const keys = (levelData.bgImages || (levelData.bgImage ? [levelData.bgImage] : []))
-      .filter(k => this.textures.exists(k));
+    const seq = (levelData.bgSequence || []).filter(k => this.textures.exists(k));
 
-    if (keys.length > 0) {
-      // Lay the background variants side by side across the long world so the
-      // scenery changes as the family fights through the level
-      const segW = worldWidth / keys.length;
-      keys.forEach((k, i) => {
-        this.add.image(segW * (i + 0.5), GAME_HEIGHT / 2, k)
-          .setDisplaySize(segW, GAME_HEIGHT)
-          .setDepth(-10);
+    if (seq.length > 0) {
+      // Segments render at native 16:9 (no squish) and each one overlaps the
+      // previous by OVERLAP px with a baked-in alpha ramp on its left edge —
+      // the two scenes crossfade instead of meeting at a hard seam.
+      const SEG_W = 1280, OVERLAP = 140;
+      seq.forEach((k, i) => {
+        this.add.image(i * (SEG_W - OVERLAP), 0, k)
+          .setOrigin(0, 0)
+          .setDisplaySize(SEG_W, GAME_HEIGHT)
+          .setDepth(-10 + i * 0.001); // later segments on top so ramps blend
       });
     } else {
       // Fallback: programmatic gradient + ground
@@ -277,6 +280,7 @@ export class GameScene extends Phaser.Scene {
 
     // Update projectiles
     this.projectiles.forEach(p => p.update(dt, this));
+    this._updateEnemyShots(dt);
 
     // Collisions
     this._checkHits();
@@ -317,11 +321,77 @@ export class GameScene extends Phaser.Scene {
       enemy = new BullyKing(this, def.x, def.y, nPlayers);
       this.bossEnemy = enemy;
       this._startBossMusic();
+    } else if (def.kind === 'thrower') {
+      enemy = new Thrower(this, def.x, def.y);
     } else {
       // 'meankid' | 'speedy' | 'bruiser'
       enemy = new MeanKid(this, def.x, def.y, def.kind);
     }
     this.enemies.push(enemy);
+  }
+
+  // ── Enemy dodgeballs (thrower variant) ──────────────────────────────
+
+  spawnEnemyShot(x, y, targetX, targetY, damage = 12) {
+    const dx   = targetX - x;
+    const vx   = Math.sign(dx || 1) * Math.min(430, Math.max(280, Math.abs(dx) * 0.9));
+    const time = Math.max(0.2, Math.abs(dx / vx));
+    const shot = {
+      x, y, z: 60,
+      vx,
+      vy: (targetY - y) / time,
+      vz: 230,
+      damage,
+      bounced: false,
+      life: 4,
+      active: true,
+      sprite: this.add.circle(x, y - 60, 9, 0xdd3333).setStrokeStyle(2, 0x551111, 0.9).setDepth(y + 5),
+      shadow: this.add.ellipse(x, y, 15, 6, 0x000000, 0.25).setDepth(y - 1),
+    };
+    this.enemyShots.push(shot);
+  }
+
+  _updateEnemyShots(dt) {
+    this.enemyShots.forEach(s => {
+      if (!s.active) return;
+      s.life -= dt;
+      s.vz   -= 1100 * dt;
+      s.z    += s.vz * dt;
+      s.x    += s.vx * dt;
+      s.y    += s.vy * dt;
+
+      if (s.z <= 0) {
+        if (s.bounced) { this._killShot(s); return; }
+        s.bounced = true;
+        s.z  = 0;
+        s.vz = 170;
+        s.vx *= 0.7;
+        this.spawnDust(s.x, s.y, 1);
+      }
+      if (s.life <= 0) { this._killShot(s); return; }
+
+      // Hit a player?
+      for (const p of this.players) {
+        if (!p?.active || p.isKO || p.invulnTimer > 0) continue;
+        if (Math.abs(p.worldX - s.x) < 32 && Math.abs(p.groundY - s.y) < 26 && s.z < 70) {
+          p.takeDamage(s.damage, Math.sign(s.vx));
+          this.spawnHitSpark(s.x, s.y - s.z, false);
+          this.hitStop(0.04);
+          this._killShot(s);
+          return;
+        }
+      }
+
+      s.sprite.setPosition(s.x, s.y - s.z).setDepth(s.y + 5);
+      s.sprite.rotation += Math.sign(s.vx) * 0.3;
+      s.shadow.setPosition(s.x, s.y).setDepth(s.y - 1);
+    });
+  }
+
+  _killShot(s) {
+    s.active = false;
+    s.sprite.destroy();
+    s.shadow.destroy();
   }
 
   _startBossMusic() {
@@ -566,7 +636,8 @@ export class GameScene extends Phaser.Scene {
   _nearestActiveEnemy(player) {
     let best = null, bestDist = Infinity;
     for (const e of this.enemies) {
-      if (!e.active || e.state === 'dead') continue;
+      // KO'd enemies are out of the fight — CPU teammates leave them alone
+      if (!e.active || e.state === 'dead' || e.state === 'ko') continue;
       const d = Math.hypot(e.worldX - player.worldX, e.groundY - player.groundY);
       if (d < bestDist) { bestDist = d; best = e; }
     }
@@ -649,5 +720,6 @@ export class GameScene extends Phaser.Scene {
   _cleanup() {
     this.enemies     = this.enemies.filter(e => e.active);
     this.projectiles = this.projectiles.filter(p => p.active);
+    this.enemyShots  = this.enemyShots.filter(s => s.active);
   }
 }

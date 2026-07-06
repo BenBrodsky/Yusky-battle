@@ -7,6 +7,7 @@ export const ENEMY_STATES = {
   CHASE:   'chase',
   ATTACK:  'attack',
   HURT:    'hurt',
+  RETREAT: 'retreat', // hit-and-run: darting away after landing a hit
   KO:      'ko',      // just got KO'd — lying on ground, can be stomped
   DOWNED:  'downed',  // same as ko but for ground stomp targeting
   DEAD:    'dead',
@@ -78,25 +79,27 @@ export class Enemy {
     this._parts = [];
     const mk = (obj, color) => { this._parts.push({ obj, color }); return obj; };
 
-    const headR = Math.min(W * 0.42, H * 0.16);
-    const hipY  = -H * 0.45;
-    const shoY  = -H * 0.70;
-    const legW  = W * 0.22, legH = H * 0.46;
-    const armW  = W * 0.17, armH = H * 0.36;
-    const headY = shoY - headR * 0.9;
+    // Chibi proportions like the hero sprites: big head, compact body
+    const headR = Math.min(W * 0.50, H * 0.19);
+    const hipY  = -H * 0.42;
+    const shoY  = -H * 0.64;
+    const legW  = W * 0.22, legH = H * 0.43;
+    const armW  = W * 0.17, armH = H * 0.33;
+    const headY = shoY - headR * 0.95;
+    const OUTLINE = 0x1a1410;
 
     // Built facing RIGHT; container scaleX flips for left.
     // Draw order: back limbs, torso, head, face, front limbs on top.
-    this.armB = mk(scene.add.rectangle(-W * 0.36, shoY, armW, armH, shirt).setOrigin(0.5, 0), shirt);
-    this.legB = mk(scene.add.rectangle(-W * 0.15, hipY, legW, legH, pants).setOrigin(0.5, 0), pants);
-    this.legF = mk(scene.add.rectangle( W * 0.15, hipY, legW, legH, pants).setOrigin(0.5, 0), pants);
-    this.torso = mk(scene.add.rectangle(0, hipY + 2, W * 0.80, H * 0.29, shirt).setOrigin(0.5, 1), shirt);
-    this.head  = mk(scene.add.circle(0, headY, headR, skin), skin);
-    this.hair  = mk(scene.add.ellipse(0, headY - headR * 0.55, headR * 2.15, headR * 1.15, hair), hair);
-    this.eyeA  = mk(scene.add.circle(headR * 0.22, headY - headR * 0.05, headR * 0.15, 0x181818), 0x181818);
-    this.eyeB  = mk(scene.add.circle(headR * 0.65, headY - headR * 0.05, headR * 0.15, 0x181818), 0x181818);
-    this.brow  = mk(scene.add.rectangle(headR * 0.42, headY - headR * 0.40, headR * 1.05, headR * 0.16, hair)
-      .setRotation(0.28), hair);
+    this.armB = mk(scene.add.rectangle(-W * 0.36, shoY, armW, armH, shirt).setOrigin(0.5, 0).setStrokeStyle(2, OUTLINE, 0.9), shirt);
+    this.legB = mk(scene.add.rectangle(-W * 0.15, hipY, legW, legH, pants).setOrigin(0.5, 0).setStrokeStyle(2, OUTLINE, 0.9), pants);
+    this.legF = mk(scene.add.rectangle( W * 0.15, hipY, legW, legH, pants).setOrigin(0.5, 0).setStrokeStyle(2, OUTLINE, 0.9), pants);
+    this.torso = mk(scene.add.rectangle(0, hipY + 2, W * 0.80, H * 0.24, shirt).setOrigin(0.5, 1).setStrokeStyle(2, OUTLINE, 0.9), shirt);
+    this.head  = mk(scene.add.circle(0, headY, headR, skin).setStrokeStyle(2, OUTLINE, 0.9), skin);
+    this.hair  = mk(scene.add.ellipse(0, headY - headR * 0.55, headR * 2.15, headR * 1.15, hair).setStrokeStyle(2, OUTLINE, 0.7), hair);
+    this.eyeA  = mk(scene.add.circle(headR * 0.22, headY, headR * 0.13, 0x181818), 0x181818);
+    this.eyeB  = mk(scene.add.circle(headR * 0.65, headY, headR * 0.13, 0x181818), 0x181818);
+    this.brow  = mk(scene.add.rectangle(headR * 0.44, headY - headR * 0.42, headR * 0.62, headR * 0.12, hair)
+      .setRotation(0.3), hair);
     this.mouth = mk(scene.add.rectangle(headR * 0.45, headY + headR * 0.50, headR * 0.65, headR * 0.14, 0x5a2020), 0x5a2020);
 
     const parts = [this.armB, this.legB, this.legF, this.torso, this.head, this.hair,
@@ -230,6 +233,12 @@ export class Enemy {
       this.velX *= 0.85;
       this.worldX += this.velX * dt;
       this.koTimer -= dt;
+      // Blink out over the last second — clear "no longer a threat" signal
+      if (this.koTimer < 1.0) {
+        const vis = Math.floor(this.koTimer / 0.11) % 2 === 0;
+        this.body.setAlpha(vis ? 1 : 0.15);
+        this.shadow.setAlpha(vis ? 0.3 : 0.05);
+      }
       if (this.koTimer <= 0) this._die();
       this._syncSprites();
       return;
@@ -267,6 +276,16 @@ export class Enemy {
 
     this.facing = dx >= 0 ? 'right' : 'left';
 
+    // Hit-and-run: back away fast after landing a hit, eyes on the player
+    if (this.state === ENEMY_STATES.RETREAT) {
+      const len   = Math.sqrt(dx * dx + dy * dy) || 1;
+      const speed = (this.config.speed ?? 110) * this.speedMult;
+      this.velX = -(dx / len) * speed * 1.15;
+      this.velY = -(dy / len) * speed * 0.6;
+      if (this.stateTimer <= 0) this.state = ENEMY_STATES.CHASE;
+      return;
+    }
+
     if (dist > this.detectionRange) {
       this.state = ENEMY_STATES.PATROL;
       this.velX  = 0;
@@ -286,7 +305,12 @@ export class Enemy {
       this.velY   = (dy / len) * speed * 0.6;
       this._separate(gameScene);
     } else if (this.state === ENEMY_STATES.ATTACK && this.stateTimer <= 0) {
-      this.state = ENEMY_STATES.CHASE;
+      if (this.config.hitAndRun) {
+        this.state      = ENEMY_STATES.RETREAT;
+        this.stateTimer = 0.8;
+      } else {
+        this.state = ENEMY_STATES.CHASE;
+      }
     }
   }
 

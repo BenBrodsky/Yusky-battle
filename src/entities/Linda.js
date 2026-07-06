@@ -25,6 +25,7 @@ const FRAMES_PER_DIR = 8;
 const IDLE_FRAME     = 6;
 const JUMP_FRAME     = 7;
 const WALK_SEQUENCE  = [0, 1, 2, 3, 4, 5];
+const JUMP_SCALE     = 0.72; // tucked jump pose fills the canvas more than standing
 
 const SWING_SPRITE_KEYS = [
   'linda_swing_r1',  'linda_swing_r2',  'linda_swing_r3',  'linda_swing_r4',
@@ -85,14 +86,24 @@ export class Linda extends Character {
     const dist      = nearEnemy ? this._dist(nearEnemy) : Infinity;
 
     if (dist > MELEE_RANGE && !this.ballActive) {
-      const dir = this.facing === 'right' ? 1 : -1;
-      const ball = new Projectile(
-        this.scene, this.worldX + dir * 30, this.groundY,
-        'tennis_ball', dir, this.config.rangedDmg, 'tennis', this
-      );
-      gameScene.projectiles.push(ball);
+      // Reserve the ball now, but serve it when the racket actually comes
+      // through (~1/3 into the swing), from racket height — so it reads as
+      // "she hit it", not "a ball fell out of her shoe".
       this.ballActive = true;
-      ball.onReturn = () => { this.ballActive = false; };
+      const dir = this.facing === 'right' ? 1 : -1;
+      this.scene.time.delayedCall(110, () => {
+        if (!this.active || this.isKO || this.state !== 'attack') {
+          this.ballActive = false;
+          return;
+        }
+        const ball = new Projectile(
+          this.scene, this.worldX + dir * 52, this.groundY,
+          'tennis_ball', dir, this.config.rangedDmg, 'tennis', this
+        );
+        gameScene.projectiles.push(ball);
+        ball.onReturn = () => { this.ballActive = false; };
+        this.scene.spawnHitSpark?.(this.worldX + dir * 52, this.groundY - 58, false);
+      });
     }
   }
 
@@ -165,8 +176,11 @@ export class Linda extends Character {
       this._activeFrameIdx = frameIdx;
     }
     const fx = this.getFxScale();
+    // Tucked jump pose fills the canvas differently — scale it down so her
+    // body stays the same size as when walking
+    const fsx = (frameNum === JUMP_FRAME) ? sx * JUMP_SCALE : sx;
     this.walkFrames[frameIdx].setVisible(true).setPosition(this.worldX, sy)
-      .setDepth(this.groundY).setScale(sx * fx.x, sx * fx.y)
+      .setDepth(this.groundY).setScale(fsx * fx.x, fsx * fx.y)
       .setAngle(this.getFxAngle()).setAlpha(alpha);
   }
 
@@ -218,7 +232,7 @@ export class Linda extends Character {
   _findNearestEnemy(enemies) {
     let best = null, bestDist = Infinity;
     for (const e of enemies) {
-      if (!e.active || e.state === 'dead') continue;
+      if (!e.active || e.state === 'dead' || e.state === 'ko') continue;
       const d = this._dist(e);
       if (d < bestDist) { bestDist = d; best = e; }
     }

@@ -260,7 +260,7 @@ export class Ben extends Character {
 
   _findCloseEnemy(enemies, range) {
     for (const e of enemies) {
-      if (!e.active || e.state === 'dead') continue;
+      if (!e.active || e.state === 'dead' || e.state === 'ko') continue;
       const dx = Math.abs(e.worldX - this.worldX);
       const dy = Math.abs(e.groundY - this.groundY) * 0.5;
       if (Math.sqrt(dx * dx + dy * dy) < range) return e;

@@ -10,13 +10,20 @@ const VARIANTS = {
     hp: 90, damage: 16, speed: 115,
     detectionRange: 360, attackRange: 74,
   },
-  // Small, quick, weak — darts in, jabs, keeps you turning around
+  // Small, quick, weak — darts in, jabs, then bolts back out (hit-and-run)
   speedy: {
     color: 0x22aacc, pantsColor: 0x223344, hairColor: 0x1a1a1a, skinColor: 0xd89868,
-    cap: true, capColor: 0x115577,
+    cap: true, capColor: 0x115577, hitAndRun: true,
     width: 40, height: 82,
     hp: 55, damage: 10, speed: 190,
     detectionRange: 420, attackRange: 66,
+  },
+  // Hangs back and lobs dodgeballs; flees if you close the distance
+  thrower: {
+    color: 0x33aa55, pantsColor: 0x224433, hairColor: 0x553311, skinColor: 0xe8b88a,
+    width: 42, height: 88,
+    hp: 70, damage: 12, speed: 105,
+    detectionRange: 560, attackRange: 0,
   },
   // Big, slow, hits like a truck — the crowd anchor you must respect
   bruiser: {
@@ -32,6 +39,70 @@ export class MeanKid extends Enemy {
     super(scene, worldX, groundY, { ...(VARIANTS[variant] ?? VARIANTS.meankid) });
     this.variant = variant;
     this.facing  = 'left'; // start facing player
+  }
+}
+
+// ── Thrower: ranged pest — keeps its distance and lobs dodgeballs ─────
+export class Thrower extends MeanKid {
+  constructor(scene, worldX, groundY) {
+    super(scene, worldX, groundY, 'thrower');
+    this.throwCooldown = 1.0 + Math.random();
+    this._threw        = false;
+  }
+
+  getAttackHitbox() { return null; } // never melees
+
+  _runAI(dt, gameScene) {
+    const target = this._nearestPlayer(gameScene.players);
+    if (!target) { this.state = ENEMY_STATES.PATROL; this.velX = 0; this.velY = 0; return; }
+
+    const dx   = target.worldX - this.worldX;
+    const dy   = target.groundY - this.groundY;
+    const dist = Math.sqrt(dx * dx + dy * dy * 0.25);
+    this.facing = dx >= 0 ? 'right' : 'left';
+    this.throwCooldown = Math.max(0, this.throwCooldown - dt);
+
+    // Mid-throw: hold position, release the ball at the arm-snap moment
+    if (this.state === ENEMY_STATES.ATTACK) {
+      this.velX = 0; this.velY = 0;
+      const p = 1 - this.stateTimer / 0.38;
+      if (p >= 0.5 && !this._threw) {
+        this._threw = true;
+        const dir = this.facing === 'right' ? 1 : -1;
+        gameScene.spawnEnemyShot?.(
+          this.worldX + dir * 24, this.groundY,
+          target.worldX, target.groundY, this.damage
+        );
+      }
+      if (this.stateTimer <= 0) this.state = ENEMY_STATES.CHASE;
+      return;
+    }
+
+    const speed = (this.config.speed ?? 105) * this.speedMult;
+    const len   = Math.sqrt(dx * dx + dy * dy) || 1;
+
+    if (dist < 220) {
+      // Too close — scamper away
+      this.state = ENEMY_STATES.CHASE;
+      this.velX  = -(dx / len) * speed * 1.2;
+      this.velY  = -(dy / len) * speed * 0.6;
+      this._separate(gameScene);
+    } else if (dist > 480) {
+      this.state = ENEMY_STATES.CHASE;
+      this.velX  = (dx / len) * speed;
+      this.velY  = (dy / len) * speed * 0.6;
+      this._separate(gameScene);
+    } else {
+      // In throwing range: line up on the player's lane and let fly
+      this.velX = 0;
+      this.velY = Math.abs(dy) > 24 ? Math.sign(dy) * speed * 0.5 : 0;
+      if (this.throwCooldown <= 0 && Math.abs(dy) <= 40) {
+        this.state         = ENEMY_STATES.ATTACK;
+        this.stateTimer    = 0.38;
+        this.throwCooldown = 2.2 + Math.random() * 0.8;
+        this._threw        = false;
+      }
+    }
   }
 }
 

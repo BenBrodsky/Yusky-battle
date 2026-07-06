@@ -79,3 +79,35 @@ the lessons below were learned wiring him up and WILL recur for the others.
   max-range boomerang logic.
 - No floating UI on characters: HP bars, name labels, and Miles' nuclear
   bar were all removed — the HUD covers it.
+
+## Asset conflict hazard (two-clone workflow)
+
+- When both clones touch the same PNG set, `git checkout --theirs/--ours`
+  during a rebase can MIX frame sets (Linda's swing ended up 8 frames on a
+  690x977 canvas + 5 frames on 1358x1375 — broken animation). Resolve binary
+  conflicts per-SET, never per-file: pick one side for the whole animation,
+  or restore the full set from a single commit (`git show <sha>:path`).
+- Enclosed white background pockets (racket/arm loops) survive border
+  flood-fill. Detect: opaque near-white blobs ≥1000px whose dilation never
+  touches transparency → remove. Legit whites (socks, strings, stripes)
+  either touch the outline or are small cells.
+
+## Background segments
+
+- Level bg = `bgSequence` in levels.js: 1280px-wide segments at native 16:9
+  (never stretch to a different aspect — reads as squished). Each segment
+  after the first has a 183px left-edge alpha ramp baked into the PNG and
+  overlaps the previous by 140 display px → crossfade instead of a seam.
+  Reused segments (b/d/c appear twice) each carry the ramp, so any order
+  works as long as the FIRST segment has no ramp ('a' = entrance, 'e' =
+  throne, keep last for the boss).
+
+## Enemies (drawn, no art assets yet)
+
+- Enemies are articulated shape-kids in a Phaser container (see Enemy.js):
+  chibi proportions, outlines, stride tied to distance traveled. Variants in
+  MeanKid.js VARIANTS: meankid / speedy (hitAndRun) / bruiser / thrower
+  (ranged, GameScene.spawnEnemyShot dodgeballs). KO = 2.2s lie-down with
+  blink-out in the last 1s; CPU players and auto-target helpers skip
+  `state === 'ko'`. Real sprite art via the same video pipeline as the
+  heroes is the intended upgrade — drop videos/PNGs in public/enemies/.
